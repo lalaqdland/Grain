@@ -10,7 +10,7 @@
 
 ## 基础信息
 
-- **Base URL**: `http://localhost:8000`
+- **Base URL**: `http://localhost:8001`
 - **API Version**: v1
 - **Content-Type**: `application/json`
 
@@ -69,7 +69,7 @@
 
 **端点**: `POST /api/v1/upload`
 
-**状态**: ✅ 已实现
+**状态**: ✅ 已实现（已测试）
 
 **描述**: 上传Word文档进行解析
 
@@ -81,23 +81,53 @@
 **响应示例**:
 ```json
 {
-  "document_id": "doc_123456",
-  "filename": "example.docx",
-  "paragraphs": [
-    {
-      "id": "para_1",
-      "text": "这是第一段内容",
-      "style": "Normal"
-    }
-  ],
-  "uploaded_at": "2026-02-03T16:00:00Z"
+  "success": true,
+  "message": "文档上传成功",
+  "data": {
+    "id": "doc_6ad47b96be89",
+    "filename": "test_document.docx",
+    "paragraphs": [
+      {
+        "id": "para_6230deb3d335",
+        "text": "测试文档",
+        "style": "Title",
+        "is_modified": false,
+        "original_text": null
+      },
+      {
+        "id": "para_c33732a53657",
+        "text": "这是第一段测试内容。",
+        "style": "Normal",
+        "is_modified": false,
+        "original_text": null
+      }
+    ],
+    "uploaded_at": "2026-02-03T19:30:13.369466",
+    "total_paragraphs": 6
+  }
 }
 ```
 
 **错误响应**:
+
+400 - 文件格式错误:
 ```json
 {
-  "detail": "File format not supported. Only .docx files are allowed."
+  "detail": "文件格式不支持，仅支持.docx格式"
+}
+```
+
+413 - 文件过大:
+```json
+{
+  "detail": "文件过大，最大支持10.0MB"
+}
+```
+
+500 - 解析失败:
+```json
+{
+  "detail": "文档解析失败: [错误信息]"
 }
 ```
 
