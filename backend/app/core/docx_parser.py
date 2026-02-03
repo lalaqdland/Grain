@@ -39,7 +39,7 @@ class DocxParser:
         try:
             self.document = Document(self.file_path)
         except Exception as e:
-            raise ValueError(f"无法解析文档: {str(e)}")
+            raise ValueError(f"无法解析文档，请确保文件格式正确: {str(e)}")
         
         # 提取段落
         paragraphs = self._extract_paragraphs()

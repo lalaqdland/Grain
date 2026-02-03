@@ -60,15 +60,15 @@ export default function Home() {
       
       // 更友好的错误提示
       if (error.code === 'ECONNREFUSED' || error.message.includes('Network Error')) {
-        setError('😢 无法连接到服务器，请确保后端服务已启动（运行在 http://localhost:8001）')
+        setError('❌ 无法连接到服务器\n请确保后端服务已启动（运行在 http://localhost:8001）')
       } else if (error.response?.status === 404) {
-        setError('😢 上传接口未找到，请检查后端服务是否正常运行')
+        setError('❌ 上传接口未找到\n请检查后端服务是否正常运行')
       } else if (error.response?.status === 413) {
-        setError('😢 文件太大了！请选择小于10MB的文档')
+        setError('❌ 文件太大了\n请选择小于10MB的文档')
       } else if (error.response?.status === 400) {
-        setError('😢 文件格式不对哦，只支持 .docx 格式的Word文档')
+        setError(error.response?.data?.detail || '❌ 文件格式不对\n仅支持 .docx 格式的Word文档')
       } else {
-        setError(`😢 上传失败：${error.response?.data?.detail || error.message || '未知错误，请重试'}`)
+        setError(error.response?.data?.detail || `❌ 上传失败\n${error.message || '未知错误，请重试'}`)
       }
     } finally {
       setIsLoading(false)
@@ -110,17 +110,21 @@ export default function Home() {
         }))
         setShowOptions(paragraphId)
       } else {
-        setError('改写失败，请重试')
+        setError('❌ 改写失败，请重试')
       }
     } catch (error: any) {
       console.error('Rewrite error:', error)
       
       if (error.code === 'ECONNREFUSED' || error.message.includes('Network Error')) {
-        setError('😢 无法连接到服务器，请确保后端服务已启动')
+        setError('❌ 无法连接到服务器\n请确保后端服务已启动（http://localhost:8001）')
+      } else if (error.response?.status === 404) {
+        setError('❌ 改写接口未找到\n可能原因：后端服务未正确启动或路由配置错误')
       } else if (error.response?.status === 400) {
-        setError('😢 改写请求参数错误')
+        setError('❌ 请求参数错误\n' + (error.response?.data?.detail || '请检查输入内容'))
+      } else if (error.response?.status === 500) {
+        setError('❌ 服务器错误\n' + (error.response?.data?.detail || 'DeepSeek API调用失败，请检查API Key配置'))
       } else {
-        setError(`😢 改写失败：${error.response?.data?.detail || error.message || '未知错误'}`)
+        setError(`❌ 改写失败\n${error.response?.data?.detail || error.message || '未知错误，请重试'}`)
       }
     } finally {
       setRewritingParagraph(null)
@@ -233,7 +237,7 @@ export default function Home() {
 
         {/* 错误提示 */}
         {error && (
-          <div className="max-w-3xl mx-auto mb-6 p-4 bg-red-50 border border-red-200 rounded-2xl text-red-700 text-sm">
+          <div className="max-w-3xl mx-auto mb-6 p-4 bg-red-50 border border-red-200 rounded-2xl text-red-700 text-sm whitespace-pre-line">
             {error}
           </div>
         )}
@@ -294,7 +298,10 @@ export default function Home() {
                     </button>
                     
                     <p className="text-xs text-slate-400 mt-4">
-                      支持 .docx 格式 · 最大 10MB
+                      仅支持 .docx 格式 · 最大 10MB
+                    </p>
+                    <p className="text-xs text-slate-500 mt-2 max-w-md mx-auto">
+                      💡 为了保证完美的排版格式，请在 Word 中将文件'另存为' .docx 格式后再上传
                     </p>
                   </>
                 )}

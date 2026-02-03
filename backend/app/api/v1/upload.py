@@ -37,7 +37,7 @@ async def upload_document(file: UploadFile = File(...)):
     if not file.filename.endswith('.docx'):
         raise HTTPException(
             status_code=400,
-            detail="文件格式不支持，仅支持.docx格式"
+            detail="❌ 仅支持 .docx 格式\n\n为了保证完美的排版格式，请在 Word 中将文件'另存为' .docx 格式后再上传"
         )
     
     # 2. 验证文件大小
@@ -47,7 +47,7 @@ async def upload_document(file: UploadFile = File(...)):
     if file_size > settings.max_upload_size:
         raise HTTPException(
             status_code=413,
-            detail=f"文件过大，最大支持{settings.max_upload_size / 1024 / 1024}MB"
+            detail=f"❌ 文件过大\n最大支持 {settings.max_upload_size / 1024 / 1024:.0f}MB，您的文件是 {file_size / 1024 / 1024:.1f}MB"
         )
     
     # 3. 生成唯一文档ID和文件名
@@ -95,9 +95,16 @@ async def upload_document(file: UploadFile = File(...)):
         if temp_file_path.exists():
             temp_file_path.unlink()
         
+        # 友好的错误提示
+        error_msg = str(e)
+        if "无法解析文档" in error_msg or "暂不支持" in error_msg:
+            detail = f"❌ 文档解析失败\n{error_msg}"
+        else:
+            detail = f"❌ 文档处理失败\n{error_msg}\n请确保文件未损坏"
+        
         raise HTTPException(
             status_code=500,
-            detail=f"文档解析失败: {str(e)}"
+            detail=detail
         )
 
 
