@@ -4,6 +4,9 @@ import './globals.css'
 export const metadata: Metadata = {
   title: 'Grain - 守拙',
   description: 'The AI Humanizer & Academic Shield',
+  icons: {
+    icon: '/favicon.svg',
+  },
 }
 
 export default function RootLayout({

@@ -107,25 +107,120 @@ npm install
 
 ### 启动项目
 
-#### 启动后端
+#### 方法一：快速启动（推荐）
+
+**1. 启动后端服务**
+
+打开第一个终端窗口：
 
 ```bash
 cd backend
-uvicorn main:app --reload
+python -m uvicorn main:app --reload --host 0.0.0.0 --port 8001
 ```
 
-后端将运行在：`http://localhost:8000`
+看到以下输出表示后端启动成功：
+```
+INFO:     Uvicorn running on http://0.0.0.0:8001 (Press CTRL+C to quit)
+INFO:     Started reloader process
+INFO:     Started server process
+INFO:     Application startup complete.
+```
 
-API文档：`http://localhost:8000/docs`
+后端服务地址：`http://localhost:8001`  
+API文档地址：`http://localhost:8001/docs`
 
-#### 启动前端
+**2. 启动前端服务**
+
+打开第二个终端窗口：
 
 ```bash
 cd frontend
 npm run dev
 ```
 
-前端将运行在：`http://localhost:3000`
+看到以下输出表示前端启动成功：
+```
+▲ Next.js 14.2.35
+- Local:        http://localhost:3000
+
+✓ Ready in 3s
+```
+
+前端服务地址：`http://localhost:3000`
+
+**3. 打开浏览器测试**
+
+在浏览器中访问：**http://localhost:3000**
+
+你将看到Grain的主界面，可以：
+- ✅ 切换降重/降AI模式
+- ✅ 拖拽上传.docx文件
+- ✅ 查看文档解析结果
+- ✅ 测试段落改写功能
+
+**⚠️ 重要提示**：
+- 确保后端服务运行在 **8001端口**（不是8000）
+- 确保前端服务运行在 **3000端口**
+- 两个服务必须同时运行才能正常使用
+
+#### 方法二：使用Docker（可选）
+
+```bash
+# 构建并启动所有服务
+docker-compose up --build
+
+# 后台运行
+docker-compose up -d
+
+# 停止服务
+docker-compose down
+```
+
+访问地址：
+- 前端：http://localhost:3001
+- 后端：http://localhost:8001
+
+---
+
+## 🧪 测试指南
+
+### 1. 测试后端API
+
+访问API文档：http://localhost:8001/docs
+
+或使用测试脚本：
+
+```bash
+cd tests
+python test_upload.py
+```
+
+### 2. 测试前端功能
+
+1. 打开浏览器访问：http://localhost:3000
+2. 准备一个.docx格式的Word文档（小于10MB）
+3. 拖拽文件到上传区域或点击选择文件
+4. 等待文档解析完成
+5. 查看段落列表
+6. 悬停段落查看操作按钮
+7. 点击"降重"或"降AI"按钮测试改写功能
+
+### 3. 常见问题排查
+
+**问题1：上传文件显示"上传接口未找到"**
+- 检查后端服务是否运行在8001端口
+- 访问 http://localhost:8001/health 确认后端正常
+- 检查前端环境变量配置
+
+**问题2：前端无法连接后端**
+- 确保后端使用 `--host 0.0.0.0 --port 8001` 启动
+- 检查防火墙设置
+- 查看浏览器控制台的网络请求
+
+**问题3：文件上传失败**
+- 确保文件格式为.docx
+- 确保文件大小小于10MB
+- 查看后端终端的错误日志
 
 ---
 
