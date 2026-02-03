@@ -1,0 +1,55 @@
+version: '3.8'
+
+services:
+  # 后端服务
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: grain-backend
+    ports:
+      - "8001:8000"  # 使用8001端口，避免与NeuralNote冲突
+    volumes:
+      - ./backend:/app
+      - ./storage:/storage
+      - ./models:/models  # 持久化模型存储
+    environment:
+      - API_HOST=0.0.0.0
+      - API_PORT=8000
+      - API_RELOAD=true
+      - CORS_ORIGINS=http://localhost:3001,http://127.0.0.1:3001
+      - TEMP_STORAGE_PATH=/storage/temp
+      - MODEL_CACHE_DIR=/models  # 模型缓存目录
+    env_file:
+      - ./backend/.env
+    networks:
+      - grain-network
+    restart: unless-stopped
+
+  # 前端服务
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: grain-frontend
+    ports:
+      - "3001:3000"  # 使用3001端口，避免与NeuralNote冲突
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8001
+    depends_on:
+      - backend
+    networks:
+      - grain-network
+    restart: unless-stopped
+
+networks:
+  grain-network:
+    driver: bridge
+
+volumes:
+  storage:
+

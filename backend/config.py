@@ -8,7 +8,7 @@ class Settings(BaseSettings):
     
     # API配置
     api_host: str = "0.0.0.0"
-    api_port: int = 8000
+    api_port: int = 8001  # 使用8001端口，避免与NeuralNote冲突
     api_reload: bool = True
     
     # DeepSeek API配置
@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     deepseek_model: str = "deepseek-chat"
     
     # CORS配置
-    cors_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
+    cors_origins: str = "http://localhost:3001,http://127.0.0.1:3001"
     
     # 文件上传配置
     max_upload_size: int = 10485760  # 10MB

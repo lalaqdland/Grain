@@ -42,10 +42,14 @@ Thumbs.db
 storage/temp/*
 !storage/temp/.gitkeep
 
-# Models (large files)
-backend/models/*.bin
-backend/models/*.pt
-backend/models/*.onnx
+# Models (large files) - 持久化模型存储
+models/
+*.bin
+*.pt
+*.onnx
+*.safetensors
+*.h5
+*.pb
 
 # Uploads
 uploads/
