@@ -2,20 +2,21 @@
  * TypeScript类型定义
  */
 
+// 段落类型
+export interface Paragraph {
+  id: string
+  text: string
+  style: string
+  isModified: boolean
+  originalText?: string
+}
+
 // 文档类型
 export interface Document {
   id: string
   filename: string
   content: Paragraph[]
   uploadedAt: string
-}
-
-// 段落类型
-export interface Paragraph {
-  id: string
-  text: string
-  isModified: boolean
-  originalText?: string
 }
 
 // 改写模式

@@ -40,65 +40,65 @@
 ### 后端任务（优先级P0）
 
 #### 文件上传功能
-- [ ] 创建 `app/api/v1/upload.py` 上传端点
-- [ ] 实现文件格式验证（仅允许.docx）
-- [ ] 实现文件大小验证（最大10MB）
-- [ ] 实现临时文件存储
-- [ ] 返回文档ID和基本信息
+- [✅] 创建 `app/api/v1/upload.py` 上传端点
+- [✅] 实现文件格式验证（仅允许.docx）
+- [✅] 实现文件大小验证（最大10MB）
+- [✅] 实现临时文件存储
+- [✅] 返回文档ID和基本信息
 
 #### Word文档解析
-- [ ] 创建 `app/core/docx_parser.py` 解析器
-- [ ] 使用python-docx读取.docx文件
-- [ ] 提取段落文本内容
-- [ ] 提取段落格式信息（字体、字号、样式）
+- [✅] 创建 `app/core/docx_parser.py` 解析器
+- [✅] 使用python-docx读取.docx文件
+- [✅] 提取段落文本内容
+- [✅] 提取段落格式信息（字体、字号、样式）
 - [ ] 创建 `app/core/xml_processor.py` XML处理器
 - [ ] 实现XML骨架提取
 - [ ] 生成段落唯一ID索引
 - [ ] 实现无损回填功能
 
 #### 数据模型
-- [ ] 创建 `app/models/document.py` 文档模型
-  - [ ] DocumentUploadResponse
-  - [ ] DocumentInfo
-  - [ ] ParagraphInfo
-- [ ] 创建 `app/models/rewrite.py` 改写模型
-  - [ ] RewriteRequest
-  - [ ] RewriteResponse
+- [✅] 创建 `app/models/document.py` 文档模型
+  - [✅] DocumentUploadResponse
+  - [✅] DocumentInfo
+  - [✅] ParagraphInfo
+- [✅] 创建 `app/models/rewrite.py` 改写模型
+  - [✅] RewriteRequest
+  - [✅] RewriteResponse
 
 #### API集成
-- [ ] 在main.py中注册上传路由
-- [ ] 实现错误处理和异常捕获
+- [✅] 在main.py中注册上传路由
+- [✅] 实现错误处理和异常捕获
 - [ ] 添加日志记录
 
 ### 前端任务（优先级P0）
 
 #### 文件上传组件
-- [ ] 创建 `components/Upload/FileUploader.tsx`
-- [ ] 使用react-dropzone实现拖拽上传
-- [ ] 实现文件格式验证
-- [ ] 实现文件大小验证
-- [ ] 显示上传进度
-- [ ] 显示错误提示
+- [✅] 创建 `components/Upload/FileUploader.tsx`
+- [✅] 使用react-dropzone实现拖拽上传
+- [✅] 实现文件格式验证
+- [✅] 实现文件大小验证
+- [✅] 显示上传进度
+- [✅] 显示错误提示
 
 #### 文档展示
-- [ ] 创建 `components/Editor/Editor.tsx` 编辑器组件
-- [ ] 创建 `components/Editor/Paragraph.tsx` 段落组件
-- [ ] 渲染文档段落列表
-- [ ] 实现段落悬停效果
-- [ ] 实现段落左侧指示条
+- [✅] 创建 `components/Editor/Editor.tsx` 编辑器组件
+- [✅] 创建 `components/Editor/Paragraph.tsx` 段落组件
+- [✅] 渲染文档段落列表
+- [✅] 实现段落悬停效果
+- [✅] 实现段落左侧指示条
 
 #### 状态管理
-- [ ] 创建 `store/editorStore.ts` Zustand store
-- [ ] 管理文档状态（document, paragraphs）
-- [ ] 管理加载状态（isLoading）
-- [ ] 管理段落修改历史
+- [✅] 创建 `store/editorStore.ts` Zustand store
+- [✅] 管理文档状态（document, paragraphs）
+- [✅] 管理加载状态（isLoading）
+- [✅] 管理段落修改历史
 
 #### 页面集成
-- [ ] 更新 `app/editor/page.tsx`
-- [ ] 集成FileUploader组件
-- [ ] 集成Editor组件
-- [ ] 实现上传成功后的文档展示
-- [ ] 添加错误处理和用户提示
+- [✅] 更新 `app/editor/page.tsx`
+- [✅] 集成FileUploader组件
+- [✅] 集成Editor组件
+- [✅] 实现上传成功后的文档展示
+- [✅] 添加错误处理和用户提示
 
 ### 测试任务
 - [ ] 编写后端单元测试（docx_parser）

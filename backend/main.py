@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from config import get_settings
+from app.api.v1 import upload
 
 # 获取配置
 settings = get_settings()
@@ -23,6 +24,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# 注册路由
+app.include_router(upload.router, prefix="/api/v1", tags=["upload"])
 
 
 @app.get("/")
