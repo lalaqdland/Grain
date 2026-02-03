@@ -207,20 +207,30 @@ python test_upload.py
 
 ### 3. 常见问题排查
 
-**问题1：上传文件显示"上传接口未找到"**
+**问题1：改写功能报错"DeepSeek API Key未配置"**
+- 解决方案：
+  1. 访问 [DeepSeek平台](https://platform.deepseek.com/) 获取API Key
+  2. 编辑 `backend/.env` 文件，设置 `DEEPSEEK_API_KEY=your_key_here`
+  3. 重启后端服务
+
+**问题2：上传文件显示"上传接口未找到"**
 - 检查后端服务是否运行在8001端口
 - 访问 http://localhost:8001/health 确认后端正常
 - 检查前端环境变量配置
 
-**问题2：前端无法连接后端**
+**问题3：前端无法连接后端**
 - 确保后端使用 `--host 0.0.0.0 --port 8001` 启动
 - 检查防火墙设置
 - 查看浏览器控制台的网络请求
 
-**问题3：文件上传失败**
+**问题4：文件上传失败**
 - 确保文件格式为.docx
 - 确保文件大小小于10MB
 - 查看后端终端的错误日志
+
+**问题5：改写速度慢**
+- 原因：DeepSeek API调用需要时间（通常5-10秒）
+- 这是正常现象，请耐心等待
 
 ---
 
@@ -345,16 +355,20 @@ npm run lint
 
 启动后端后，访问以下地址查看完整API文档：
 
-- **Swagger UI**: http://localhost:8000/docs
-- **ReDoc**: http://localhost:8000/redoc
+- **Swagger UI**: http://localhost:8001/docs
+- **ReDoc**: http://localhost:8001/redoc
 
 ### 主要端点
 
-- `GET /health` - 健康检查
-- `GET /api/v1/info` - API信息
-- `POST /api/v1/upload` - 上传文档
-- `POST /api/v1/rewrite` - 改写文本
-- `GET /api/v1/export/{id}` - 导出文档
+| 端点 | 方法 | 状态 | 描述 |
+|------|------|------|------|
+| `/health` | GET | ✅ | 健康检查 |
+| `/api/v1/info` | GET | ✅ | API信息 |
+| `/api/v1/upload` | POST | ✅ | 上传文档 |
+| `/api/v1/rewrite` | POST | ✅ | 改写文本（降重/降AI） |
+| `/api/v1/export/{doc_id}` | GET | ✅ | 导出修改后的文档 |
+
+详细API文档请查看：[API文档](./docs/API文档.md)
 
 ---
 
@@ -375,6 +389,32 @@ npm run lint
 本项目采用 MIT 许可证。详见 [LICENSE](LICENSE) 文件。
 
 ---
+
+## 📚 更多文档
+
+- 📋 [API文档](./docs/API文档.md) - 完整的API端点说明
+- 📝 [开发日志](./docs/开发日志.md) - 开发过程记录和功能总结
+- 📄 [产品设计文档](./docs/产品设计文档%20(PDD)：Grain%20(守拙)%20v3.1.0.md) - 完整的产品设计和云端部署计划
+- 🔧 [工作规范](./docs/工作规范.md) - 代码和Git规范
+
+## 🔐 安全注意事项
+
+1. **API Key保护**：
+   - 不要将 `.env` 文件提交到Git
+   - 不要在前端暴露API Key
+   - 定期更换API Key
+
+2. **文件安全**：
+   - 上传的文件存储在临时目录
+   - 建议定期清理 `storage/temp/` 目录
+   - 不要上传敏感文档到公共服务器
+
+## 📊 性能指标
+
+- **文件上传**：< 1秒（10MB以内）
+- **文档解析**：< 2秒
+- **段落改写**：5-10秒（取决于DeepSeek API响应）
+- **文档导出**：< 1秒
 
 ## 📧 联系方式
 

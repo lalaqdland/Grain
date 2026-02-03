@@ -11,6 +11,7 @@ from fastapi.responses import JSONResponse
 
 from app.models.document import DocumentUploadResponse, DocumentInfo, ParagraphInfo
 from app.core.docx_parser import DocxParser
+from app.core.xml_processor import XMLProcessor, register_processor
 from config import get_settings
 
 router = APIRouter()
@@ -68,7 +69,12 @@ async def upload_document(file: UploadFile = File(...)):
         parser = DocxParser(str(temp_file_path))
         parsed_data = parser.parse()
         
-        # 6. 构建响应
+        # 6. 创建XML处理器并注册（用于后续导出）
+        xml_processor = XMLProcessor(str(temp_file_path))
+        xml_processor.extract_skeleton()
+        register_processor(doc_id, xml_processor)
+        
+        # 7. 构建响应
         paragraphs = [ParagraphInfo(**p) for p in parsed_data["paragraphs"]]
         
         document_info = DocumentInfo(

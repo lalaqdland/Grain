@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     deepseek_model: str = "deepseek-chat"
     
     # CORS配置
-    cors_origins: str = "http://localhost:3001,http://127.0.0.1:3001"
+    cors_origins: str = "http://localhost:3000,http://127.0.0.1:3000,http://localhost:3001,http://127.0.0.1:3001"
     
     # 文件上传配置
     max_upload_size: int = 10485760  # 10MB

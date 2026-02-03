@@ -27,6 +27,9 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [hoveredParagraph, setHoveredParagraph] = useState<string | null>(null)
+  const [rewritingParagraph, setRewritingParagraph] = useState<string | null>(null)
+  const [rewriteOptions, setRewriteOptions] = useState<{[key: string]: string[]}>({})
+  const [showOptions, setShowOptions] = useState<string | null>(null)
 
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
     if (acceptedFiles.length === 0) return
@@ -85,6 +88,88 @@ export default function Home() {
   const handleReset = () => {
     setDocument(null)
     setError(null)
+    setRewriteOptions({})
+    setShowOptions(null)
+  }
+
+  const handleRewrite = async (paragraphId: string, text: string) => {
+    setRewritingParagraph(paragraphId)
+    setError(null)
+
+    try {
+      const response = await api.rewriteText({
+        text,
+        mode,
+        language: 'zh' // 默认中文，可以根据文本自动检测
+      })
+
+      if (response.success && response.options) {
+        setRewriteOptions(prev => ({
+          ...prev,
+          [paragraphId]: response.options
+        }))
+        setShowOptions(paragraphId)
+      } else {
+        setError('改写失败，请重试')
+      }
+    } catch (error: any) {
+      console.error('Rewrite error:', error)
+      
+      if (error.code === 'ECONNREFUSED' || error.message.includes('Network Error')) {
+        setError('😢 无法连接到服务器，请确保后端服务已启动')
+      } else if (error.response?.status === 400) {
+        setError('😢 改写请求参数错误')
+      } else {
+        setError(`😢 改写失败：${error.response?.data?.detail || error.message || '未知错误'}`)
+      }
+    } finally {
+      setRewritingParagraph(null)
+    }
+  }
+
+  const handleSelectOption = (paragraphId: string, optionText: string) => {
+    if (!document) return
+
+    // 更新文档中的段落
+    const updatedParagraphs = document.paragraphs.map(para => {
+      if (para.id === paragraphId) {
+        return {
+          ...para,
+          text: optionText,
+          is_modified: true
+        }
+      }
+      return para
+    })
+
+    setDocument({
+      ...document,
+      paragraphs: updatedParagraphs
+    })
+
+    // 清除选项显示
+    setShowOptions(null)
+  }
+
+  const handleExport = async () => {
+    if (!document) return
+
+    try {
+      const blob = await api.exportDocument(document.id)
+      
+      // 创建下载链接
+      const url = window.URL.createObjectURL(new Blob([blob]))
+      const link = window.document.createElement('a')
+      link.href = url
+      link.setAttribute('download', `modified_${document.filename}`)
+      window.document.body.appendChild(link)
+      link.click()
+      link.remove()
+      window.URL.revokeObjectURL(url)
+    } catch (error: any) {
+      console.error('Export error:', error)
+      setError('😢 导出失败，请重试')
+    }
   }
 
   return (
@@ -234,7 +319,10 @@ export default function Home() {
                     >
                       重新上传
                     </button>
-                    <button className="px-5 py-2.5 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-xl hover:shadow-lg transition-all text-sm font-medium">
+                    <button 
+                      onClick={handleExport}
+                      className="px-5 py-2.5 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-xl hover:shadow-lg transition-all text-sm font-medium"
+                    >
                       导出文档
                     </button>
                   </div>
@@ -248,16 +336,21 @@ export default function Home() {
                     key={para.id}
                     onMouseEnter={() => setHoveredParagraph(para.id)}
                     onMouseLeave={() => setHoveredParagraph(null)}
-                    className="group relative pl-6 pr-4 py-4 rounded-xl hover:bg-slate-50 transition-all duration-200 cursor-pointer"
+                    className={`
+                      group relative pl-6 pr-4 py-4 rounded-xl transition-all duration-200 cursor-pointer
+                      ${para.is_modified ? 'bg-green-50' : 'hover:bg-slate-50'}
+                    `}
                   >
                     {/* 左侧指示条 */}
                     <div className={`
                       absolute left-0 top-0 bottom-0 w-1 rounded-full transition-all duration-200
-                      ${hoveredParagraph === para.id 
-                        ? mode === 'plagiarism' 
-                          ? 'bg-gradient-to-b from-rose-500 to-pink-500' 
-                          : 'bg-gradient-to-b from-amber-500 to-orange-500'
-                        : 'bg-slate-200'
+                      ${para.is_modified 
+                        ? 'bg-gradient-to-b from-green-500 to-emerald-500'
+                        : hoveredParagraph === para.id 
+                          ? mode === 'plagiarism' 
+                            ? 'bg-gradient-to-b from-rose-500 to-pink-500' 
+                            : 'bg-gradient-to-b from-amber-500 to-orange-500'
+                          : 'bg-slate-200'
                       }
                     `} />
                     
@@ -273,19 +366,72 @@ export default function Home() {
                       </p>
                       
                       {/* 操作按钮 */}
-                      {hoveredParagraph === para.id && (
-                        <button className={`
-                          px-4 py-2 rounded-lg text-white text-sm font-medium
-                          transition-all duration-200 hover:shadow-md whitespace-nowrap
-                          ${mode === 'plagiarism'
-                            ? 'bg-gradient-to-r from-rose-500 to-pink-500'
-                            : 'bg-gradient-to-r from-amber-500 to-orange-500'
-                          }
-                        `}>
+                      {hoveredParagraph === para.id && rewritingParagraph !== para.id && (
+                        <button 
+                          onClick={() => handleRewrite(para.id, para.text)}
+                          className={`
+                            px-4 py-2 rounded-lg text-white text-sm font-medium
+                            transition-all duration-200 hover:shadow-md whitespace-nowrap
+                            ${mode === 'plagiarism'
+                              ? 'bg-gradient-to-r from-rose-500 to-pink-500'
+                              : 'bg-gradient-to-r from-amber-500 to-orange-500'
+                            }
+                          `}
+                        >
                           {mode === 'plagiarism' ? '降重' : '降AI'}
                         </button>
                       )}
+                      
+                      {/* 加载中 */}
+                      {rewritingParagraph === para.id && (
+                        <div className="flex items-center gap-2 px-4 py-2">
+                          <div className="flex gap-1">
+                            <div className="w-2 h-2 bg-violet-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                            <div className="w-2 h-2 bg-violet-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                            <div className="w-2 h-2 bg-violet-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                          </div>
+                        </div>
+                      )}
                     </div>
+                    
+                    {/* 改写选项气泡 */}
+                    {showOptions === para.id && rewriteOptions[para.id] && (
+                      <div className="mt-4 space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                        <p className="text-xs text-slate-500 font-medium mb-2">选择一个改写版本：</p>
+                        {rewriteOptions[para.id].map((option, index) => (
+                          <div
+                            key={index}
+                            onClick={() => handleSelectOption(para.id, option)}
+                            className={`
+                              p-4 rounded-lg border-2 cursor-pointer transition-all duration-200
+                              hover:shadow-md hover:scale-[1.01]
+                              ${mode === 'plagiarism'
+                                ? 'border-rose-200 bg-rose-50 hover:border-rose-400'
+                                : 'border-amber-200 bg-amber-50 hover:border-amber-400'
+                              }
+                            `}
+                          >
+                            <div className="flex items-start gap-2">
+                              <span className={`
+                                text-xs font-bold mt-0.5
+                                ${mode === 'plagiarism' ? 'text-rose-600' : 'text-amber-600'}
+                              `}>
+                                {index + 1}
+                              </span>
+                              <p className="flex-1 text-sm text-slate-700 leading-relaxed">
+                                {option}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                        <button
+                          onClick={() => setShowOptions(null)}
+                          className="w-full mt-2 px-4 py-2 text-sm text-slate-600 hover:text-slate-800 transition-colors"
+                        >
+                          取消
+                        </button>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

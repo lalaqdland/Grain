@@ -137,7 +137,7 @@
 
 **端点**: `POST /api/v1/rewrite`
 
-**状态**: ⏳ 待实现
+**状态**: ✅ 已实现
 
 **描述**: 使用AI改写文本（降重或降AI）
 
@@ -162,6 +162,8 @@
 **响应示例**:
 ```json
 {
+  "success": true,
+  "message": "改写成功",
   "options": [
     "改写选项1：...",
     "改写选项2：...",
@@ -172,22 +174,54 @@
 }
 ```
 
+**错误响应**:
+
+400 - 参数错误:
+```json
+{
+  "detail": "DeepSeek API Key未配置，请在.env文件中设置DEEPSEEK_API_KEY"
+}
+```
+
+500 - 改写失败:
+```json
+{
+  "detail": "改写失败: [错误信息]"
+}
+```
+
 ---
 
 ### 5. 导出文档
 
-**端点**: `GET /api/v1/export/{document_id}`
+**端点**: `GET /api/v1/export/{doc_id}`
 
-**状态**: ⏳ 待实现
+**状态**: ✅ 已实现
 
 **描述**: 导出修改后的Word文档
 
 **路径参数**:
-- `document_id`: 文档ID
+- `doc_id`: 文档ID
 
 **响应**:
 - Content-Type: `application/vnd.openxmlformats-officedocument.wordprocessingml.document`
 - Body: .docx文件二进制数据
+
+**错误响应**:
+
+404 - 文档不存在:
+```json
+{
+  "detail": "文档不存在: [doc_id]"
+}
+```
+
+500 - 导出失败:
+```json
+{
+  "detail": "导出失败: [错误信息]"
+}
+```
 
 ---
 
