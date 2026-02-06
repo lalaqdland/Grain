@@ -1,0 +1,10 @@
+services:
+  backend:
+    environment:
+      - CORS_ORIGINS=http://47.101.214.41:3001,http://localhost:3001,http://127.0.0.1:3001
+
+  frontend:
+    environment:
+      - NEXT_PUBLIC_API_URL=http://47.101.214.41:8001
+      - CHOKIDAR_USEPOLLING=true
+      - WATCHPACK_POLLING=true

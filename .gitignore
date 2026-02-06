@@ -57,3 +57,6 @@ uploads/
 *.doc
 *.pdf
 
+# Mutagen lock
+mutagen.yml.lock
+
