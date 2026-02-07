@@ -186,6 +186,10 @@
 }
 ```
 
+行为说明（v3.1.2 回归修复后）：
+- 接口采用严格原子语义：本次请求只要存在任意无效段落 ID，则不会应用任何修改。
+- 因此失败响应中 `detail.applied_ids` 固定为 `[]`。
+
 ### 3.7 GET `/api/v1/export/{doc_id}`
 
 说明：不提交新修改，直接导出当前文档状态。  
@@ -208,11 +212,12 @@
 
 ## 5. 最新验收结论（v3.1.2）
 
-- `python -m pytest -q`：`11 passed`
+- `python -m pytest -q`：`12 passed`
 - `cd frontend && npm run build`：通过
 - `cd frontend && npm run e2e`：通过（1 条 Playwright 用例）
-- 新覆盖：重复句场景按 selection offset 精确替换；导出请求 `modifications` 与页面文本一致
+- 新覆盖：重复句场景按 selection offset 精确替换；导出请求 `modifications` 与页面文本一致；导出失败不会污染缓存文档状态
 
 相关报告：
 - `docs/status/测试报告-2026-02-07-核心闭环修复.md`
 - `docs/status/测试报告-2026-02-07-offset替换与E2E.md`
+- `docs/status/测试报告-2026-02-07-export原子性回归修复.md`

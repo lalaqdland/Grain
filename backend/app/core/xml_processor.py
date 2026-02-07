@@ -118,21 +118,40 @@ class XMLProcessor:
         Returns:
             应用结果明细
         """
-        applied_ids = []
-        failed_ids = []
+        requested_ids = list(modifications.keys())
+        failed_ids = [para_id for para_id in requested_ids if para_id not in self.paragraph_map]
+        if failed_ids:
+            # 原子语义：存在无效ID时不执行任何修改。
+            return {
+                "requested_count": len(modifications),
+                "applied_count": 0,
+                "failed_count": len(failed_ids),
+                "applied_ids": [],
+                "failed_ids": failed_ids,
+            }
 
-        for para_id, new_text in modifications.items():
-            if self.replace_paragraph_text(para_id, new_text):
+        applied_ids = []
+        original_text_map = {
+            para_id: self.paragraph_map[para_id].text
+            for para_id in requested_ids
+        }
+        try:
+            for para_id, new_text in modifications.items():
+                if not self.replace_paragraph_text(para_id, new_text):
+                    raise RuntimeError(f"段落替换失败: {para_id}")
                 applied_ids.append(para_id)
-            else:
-                failed_ids.append(para_id)
+        except Exception:
+            # 防御性回滚：确保处理器内存状态不会出现半应用结果。
+            for para_id in applied_ids:
+                self.replace_paragraph_text(para_id, original_text_map[para_id])
+            raise
 
         return {
             "requested_count": len(modifications),
             "applied_count": len(applied_ids),
-            "failed_count": len(failed_ids),
+            "failed_count": 0,
             "applied_ids": applied_ids,
-            "failed_ids": failed_ids,
+            "failed_ids": [],
         }
 
 

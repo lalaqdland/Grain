@@ -56,7 +56,8 @@ async def export_document(request: ExportRequest):
                 detail={
                     "message": "部分段落ID不存在，导出已中止",
                     "failed_ids": apply_result["failed_ids"],
-                    "applied_ids": apply_result["applied_ids"],
+                    # 严格原子语义：失败时不落地任何修改。
+                    "applied_ids": [],
                 },
             )
         

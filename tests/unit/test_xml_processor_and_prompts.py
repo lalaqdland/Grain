@@ -37,8 +37,9 @@ def test_xml_processor_apply_modifications_reports_failures(tmp_path):
         }
     )
 
-    assert result["applied_ids"] == ["para_000000"]
+    assert result["applied_ids"] == []
     assert result["failed_ids"] == ["para_missing"]
+    assert processor.paragraph_map["para_000000"].text == "alpha"
 
 
 def test_prompt_supports_sentence_unit_and_option_count():
@@ -52,4 +53,3 @@ def test_prompt_supports_sentence_unit_and_option_count():
 
     assert "Rewrite only this sentence" in prompt
     assert "provide 2 different rewritten versions" in prompt
-

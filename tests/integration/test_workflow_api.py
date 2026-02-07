@@ -87,6 +87,36 @@ def test_export_applies_modifications_to_docx(client, sample_docx_bytes):
     assert marker in non_empty
 
 
+def test_export_mixed_ids_does_not_pollute_cached_document(client, sample_docx_bytes):
+    uploaded = upload_sample_doc(client, sample_docx_bytes)
+    target_id = uploaded["paragraphs"][0]["id"]
+    original_text = uploaded["paragraphs"][0]["text"]
+    mutated_text = "MUTATED_SHOULD_NOT_PERSIST"
+
+    response = client.post(
+        "/api/v1/export",
+        json={
+            "doc_id": uploaded["id"],
+            "modifications": {
+                target_id: mutated_text,
+                "para_not_exist": "invalid",
+            },
+        },
+    )
+    assert response.status_code == 400
+    detail = response.json()["detail"]
+    assert detail["failed_ids"] == ["para_not_exist"]
+    assert detail["applied_ids"] == []
+
+    follow_up = client.get(f"/api/v1/export/{uploaded['id']}")
+    assert follow_up.status_code == 200
+    exported_doc = Document(BytesIO(follow_up.content))
+    non_empty = [p.text for p in exported_doc.paragraphs if p.text.strip()]
+
+    assert original_text in non_empty
+    assert mutated_text not in non_empty
+
+
 def test_rewrite_supports_sentence_unit_and_option_count(client, monkeypatch):
     class FakeRewriteService:
         def rewrite_text(self, text, mode, language, unit, option_count, max_retries=3):
