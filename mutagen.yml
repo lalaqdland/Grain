@@ -1,17 +1,19 @@
 sync:
   defaults:
-    mode: two-way-resolved
+    mode: one-way-safe
     ignore:
       paths:
         - "/.git"
+        - "/.deploy-*"
         - "/frontend/node_modules"
         - "/frontend/.next"
         - "/backend/__pycache__"
         - "/storage/temp"
         - "/models"
         - "/backend/.env"
+        - "/mutagen.yml.lock"
 
   code:
     alpha: "."
-    beta: "aliyun:/opt/gain-project"
-    mode: two-way-resolved
+    beta: "capoo-hk:/opt/gain-preview"
+    mode: one-way-safe
