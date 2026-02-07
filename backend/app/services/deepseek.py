@@ -2,11 +2,11 @@
 DeepSeek API服务
 """
 
-from typing import Dict, List
+from typing import Any, Dict, List
 from openai import OpenAI
 from config import get_settings
 from app.prompts.rewrite_prompts import get_prompt
-from app.services.marian import get_marian_service
+from app.services.marian import get_marian_runtime_info, get_marian_service
 
 settings = get_settings()
 
@@ -34,7 +34,7 @@ class DeepSeekService:
         unit: str = "paragraph",
         option_count: int = 3,
         max_retries: int = 3,
-    ) -> Dict[str, List[str]]:
+    ) -> Dict[str, Any]:
         """
         改写文本。
 
@@ -56,33 +56,75 @@ class DeepSeekService:
         )
         sources = ["deepseek"] * len(options)
 
+        runtime_info = get_marian_runtime_info()
+        marian_eligible = mode == "ai_detection" and language == "en"
+        marian_diagnostics = {
+            "enabled": runtime_info["enabled"],
+            "eligible": marian_eligible,
+            "attempted": False,
+            "dependency_ready": runtime_info["dependency_ready"],
+            "used": False,
+            "status": "not_eligible",
+            "reason": "marian only applies to ai_detection/en requests",
+        }
+
         # 英文降AI可选Marian噪声候选
-        if settings.use_marian_mt and mode == "ai_detection" and language == "en":
-            marian_option = self._try_marian_option(text)
-            if marian_option:
-                if options:
-                    options[-1] = marian_option
-                    sources[-1] = "marian"
-                else:
-                    options = [marian_option]
-                    sources = ["marian"]
+        if marian_eligible:
+            if not runtime_info["enabled"]:
+                marian_diagnostics["status"] = "disabled"
+                marian_diagnostics["reason"] = runtime_info["reason"]
+            elif not runtime_info["dependency_ready"]:
+                marian_diagnostics["status"] = "dependency_missing"
+                marian_diagnostics["reason"] = runtime_info["reason"]
+            else:
+                marian_diagnostics["attempted"] = True
+                marian_attempt = self._try_marian_option(text)
+                marian_option = marian_attempt["candidate"]
+                marian_diagnostics["status"] = marian_attempt["status"]
+                marian_diagnostics["reason"] = marian_attempt["reason"]
+                marian_diagnostics["used"] = bool(marian_option)
+
+                if marian_option:
+                    if options:
+                        options[-1] = marian_option
+                        sources[-1] = "marian"
+                    else:
+                        options = [marian_option]
+                        sources = ["marian"]
+        else:
+            marian_diagnostics["dependency_ready"] = runtime_info["dependency_ready"]
 
         options, sources = self._normalize_options(text, options, sources, option_count)
         return {
             "options": options,
             "sources": sources,
+            "diagnostics": {
+                "marian": marian_diagnostics,
+            },
         }
 
-    def _try_marian_option(self, text: str) -> str | None:
-        """尝试生成Marian噪声候选，失败则静默回退。"""
+    def _try_marian_option(self, text: str) -> Dict[str, Any]:
+        """尝试生成 Marian 候选，并返回详细状态。"""
         try:
             marian_service = get_marian_service()
             candidate = marian_service.back_translate_en(text)
             if candidate and candidate.strip() and candidate.strip() != text.strip():
-                return candidate.strip()
-        except Exception:
-            return None
-        return None
+                return {
+                    "candidate": candidate.strip(),
+                    "status": "used",
+                    "reason": None,
+                }
+            return {
+                "candidate": None,
+                "status": "no_effect",
+                "reason": "candidate is empty or unchanged",
+            }
+        except Exception as exc:
+            return {
+                "candidate": None,
+                "status": "generation_failed",
+                "reason": str(exc),
+            }
 
     def _rewrite_with_deepseek(
         self,
@@ -172,4 +214,3 @@ def get_deepseek_service() -> DeepSeekService:
     if _deepseek_service is None:
         _deepseek_service = DeepSeekService()
     return _deepseek_service
-

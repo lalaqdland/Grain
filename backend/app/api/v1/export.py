@@ -4,11 +4,12 @@
 
 import os
 import uuid
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from typing import Dict
 from app.core.xml_processor import get_processor
+from app.core.export_observability import get_export_failure_stats_store
 from config import get_settings
 
 router = APIRouter()
@@ -51,6 +52,10 @@ async def export_document(request: ExportRequest):
         # 应用修改
         apply_result = processor.apply_modifications(request.modifications)
         if apply_result["failed_ids"]:
+            get_export_failure_stats_store().record_failure(
+                doc_id=request.doc_id,
+                failed_ids=apply_result["failed_ids"],
+            )
             raise HTTPException(
                 status_code=400,
                 detail={
@@ -80,6 +85,20 @@ async def export_document(request: ExportRequest):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"导出失败: {str(e)}")
+
+
+@router.get("/export/stats")
+async def get_export_failure_stats(
+    window_minutes: int = Query(default=60, ge=1, le=1440),
+    doc_id: str | None = Query(default=None),
+    top_n: int = Query(default=20, ge=1, le=100),
+):
+    """查询导出失败统计。"""
+    return get_export_failure_stats_store().query(
+        window_minutes=window_minutes,
+        doc_id=doc_id,
+        top_n=top_n,
+    )
 
 
 @router.get("/export/{doc_id}")

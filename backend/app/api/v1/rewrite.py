@@ -44,6 +44,7 @@ async def rewrite_text(request: RewriteRequest):
             language=request.language,
             unit=request.unit,
             meta=[{"source": source} for source in rewrite_result["sources"]],
+            diagnostics=rewrite_result.get("diagnostics"),
         )
         
     except ValueError as e:

@@ -2,6 +2,7 @@
 MarianMT 回译服务（En -> De -> En）
 """
 
+import importlib.util
 from typing import Any
 from config import get_settings
 
@@ -77,3 +78,38 @@ def get_marian_service() -> MarianService:
     if _marian_service is None:
         _marian_service = MarianService()
     return _marian_service
+
+
+def probe_marian_dependencies() -> dict[str, bool]:
+    """探测 Marian 依赖可用性（不触发模型加载）。"""
+    return {
+        "transformers": importlib.util.find_spec("transformers") is not None,
+        "torch": importlib.util.find_spec("torch") is not None,
+        "sentencepiece": importlib.util.find_spec("sentencepiece") is not None,
+    }
+
+
+def get_marian_runtime_info() -> dict[str, Any]:
+    """获取 Marian 运行态信息。"""
+    dependencies = probe_marian_dependencies()
+    dependency_ready = all(dependencies.values())
+    enabled = bool(settings.use_marian_mt)
+
+    missing_dependencies = [name for name, ready in dependencies.items() if not ready]
+    if not enabled:
+        status = "disabled"
+        reason = "USE_MARIAN_MT=false"
+    elif dependency_ready:
+        status = "enabled"
+        reason = None
+    else:
+        status = "degraded"
+        reason = f"missing_dependencies:{','.join(missing_dependencies)}"
+
+    return {
+        "enabled": enabled,
+        "dependency_ready": dependency_ready,
+        "dependencies": dependencies,
+        "status": status,
+        "reason": reason,
+    }

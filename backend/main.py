@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from config import get_settings
 from app.api.v1 import upload, rewrite, export
+from app.services.marian import get_marian_runtime_info
 
 # 获取配置
 settings = get_settings()
@@ -54,6 +55,7 @@ async def health_check():
 @app.get("/api/v1/info")
 async def api_info():
     """API信息端点"""
+    runtime_marian = get_marian_runtime_info()
     return {
         "api_version": "v1",
         "features": {
@@ -62,6 +64,9 @@ async def api_info():
             "format_preservation": True,
             "sentence_rewrite": True,
             "marian_optional": settings.use_marian_mt,
+        },
+        "runtime": {
+            "marian": runtime_marian,
         },
         "supported_formats": [".docx"],
         "max_file_size": f"{settings.max_upload_size / 1024 / 1024}MB"

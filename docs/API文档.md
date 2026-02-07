@@ -1,6 +1,6 @@
-# Grain API 文档
+﻿# Grain API 文档
 
-> 最后更新：2026-02-07  
+> 最后更新：2026-02-07（v3.1.2-observability）  
 > 当前版本：v3.1.2  
 > 维护约定：接口变更后同步更新本文档与 `docs/status/` 测试报告。
 
@@ -24,6 +24,7 @@
 | POST | `/api/v1/rewrite` | 文本改写（句子/段落） | 已实现 |
 | POST | `/api/v1/export` | 导出修改后文档 | 已实现 |
 | GET | `/api/v1/export/{doc_id}` | 导出当前文档状态 | 已实现 |
+| GET | `/api/v1/export/stats` | 导出失败统计查询（时间窗/文档过滤） | 已实现（v3.1.2-observability） |
 
 ---
 
@@ -54,6 +55,19 @@
     "format_preservation": true,
     "sentence_rewrite": true,
     "marian_optional": false
+  },
+  "runtime": {
+    "marian": {
+      "enabled": false,
+      "dependency_ready": false,
+      "dependencies": {
+        "transformers": false,
+        "torch": false,
+        "sentencepiece": false
+      },
+      "status": "disabled",
+      "reason": "USE_MARIAN_MT=false"
+    }
   },
   "supported_formats": [".docx"],
   "max_file_size": "10.0MB"
@@ -156,9 +170,28 @@
     { "source": "deepseek" },
     { "source": "deepseek" },
     { "source": "marian" }
-  ]
+  ],
+  "diagnostics": {
+    "marian": {
+      "enabled": false,
+      "eligible": true,
+      "attempted": false,
+      "dependency_ready": false,
+      "used": false,
+      "status": "disabled",
+      "reason": "USE_MARIAN_MT=false"
+    }
+  }
 }
 ```
+
+`diagnostics.marian.status` 取值：
+- `used`: Marian 候选已生成并被采用
+- `disabled`: Marian 开关未启用
+- `not_eligible`: 请求不满足 Marian 参与条件（非英文或非 `ai_detection`）
+- `dependency_missing`: 启用但依赖缺失
+- `generation_failed`: Marian 调用异常
+- `no_effect`: Marian 结果为空或与原文一致
 
 ### 3.6 POST `/api/v1/export`
 
@@ -195,6 +228,39 @@
 说明：不提交新修改，直接导出当前文档状态。  
 失败时：`404` 文档不存在。
 
+### 3.8 GET `/api/v1/export/stats`
+
+说明：查询导出失败统计（内存聚合，服务重启后清空）。
+
+Query 参数：
+- `window_minutes`：统计时间窗（默认 `60`，范围 `1..1440`）
+- `doc_id`：可选，仅查询目标文档
+- `top_n`：按失败请求数排序的文档数量（默认 `20`，范围 `1..100`）
+
+响应示例：
+
+```json
+{
+  "window_minutes": 60,
+  "generated_at": "2026-02-07T12:39:33.318017+00:00",
+  "filters": {
+    "doc_id": "doc_da004a4f9f0b"
+  },
+  "summary": {
+    "failed_requests": 1,
+    "failed_ids": 1
+  },
+  "by_doc": [
+    {
+      "doc_id": "doc_da004a4f9f0b",
+      "failed_requests": 1,
+      "failed_ids": 1,
+      "last_failed_at": "2026-02-07T12:39:32.376998+00:00"
+    }
+  ]
+}
+```
+
 ---
 
 ## 4. 状态码
@@ -210,14 +276,20 @@
 
 ---
 
-## 5. 最新验收结论（v3.1.2）
+## 5. 最新验收结论（v3.1.2-observability）
 
-- `python -m pytest -q`：`12 passed`
+- `python -m pytest -q`：`19 passed`
 - `cd frontend && npm run build`：通过
 - `cd frontend && npm run e2e`：通过（1 条 Playwright 用例）
-- 新覆盖：重复句场景按 selection offset 精确替换；导出请求 `modifications` 与页面文本一致；导出失败不会污染缓存文档状态
+- 新覆盖：
+  - 重复句场景按 selection offset 精确替换
+  - 导出请求 `modifications` 与页面文本一致
+  - 导出失败不会污染缓存文档状态
+  - `failed_ids` 支持按时间窗与 `doc_id` 统计查询
+  - Marian 链路状态在 `/api/v1/rewrite` 与 `/api/v1/info` 可观测
 
 相关报告：
 - `docs/status/测试报告-2026-02-07-核心闭环修复.md`
 - `docs/status/测试报告-2026-02-07-offset替换与E2E.md`
 - `docs/status/测试报告-2026-02-07-export原子性回归修复.md`
+- `docs/status/测试报告-2026-02-07-dev回归与可观测性增强.md`

@@ -66,6 +66,41 @@ def test_export_rejects_invalid_paragraph_id(client, sample_docx_bytes):
     assert detail["applied_ids"] == []
 
 
+def test_export_stats_aggregates_failed_ids(client, sample_docx_bytes):
+    uploaded = upload_sample_doc(client, sample_docx_bytes)
+    second_doc = upload_sample_doc(client, sample_docx_bytes)
+
+    client.post(
+        "/api/v1/export",
+        json={
+            "doc_id": uploaded["id"],
+            "modifications": {"para_not_exist": "replacement"},
+        },
+    )
+    client.post(
+        "/api/v1/export",
+        json={
+            "doc_id": second_doc["id"],
+            "modifications": {"para_not_exist": "replacement", "para_also_missing": "replacement"},
+        },
+    )
+
+    response = client.get("/api/v1/export/stats?window_minutes=60&top_n=10")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["summary"]["failed_requests"] == 2
+    assert payload["summary"]["failed_ids"] == 3
+    assert len(payload["by_doc"]) == 2
+
+    response_filtered = client.get(f"/api/v1/export/stats?window_minutes=60&doc_id={uploaded['id']}")
+    assert response_filtered.status_code == 200
+    filtered_payload = response_filtered.json()
+    assert filtered_payload["summary"]["failed_requests"] == 1
+    assert filtered_payload["summary"]["failed_ids"] == 1
+    assert filtered_payload["by_doc"][0]["doc_id"] == uploaded["id"]
+
+
 def test_export_applies_modifications_to_docx(client, sample_docx_bytes):
     uploaded = upload_sample_doc(client, sample_docx_bytes)
     target_id = uploaded["paragraphs"][0]["id"]
@@ -122,7 +157,21 @@ def test_rewrite_supports_sentence_unit_and_option_count(client, monkeypatch):
         def rewrite_text(self, text, mode, language, unit, option_count, max_retries=3):
             options = [f"{unit}-option-{idx}" for idx in range(1, option_count + 1)]
             sources = ["deepseek"] * option_count
-            return {"options": options, "sources": sources}
+            return {
+                "options": options,
+                "sources": sources,
+                "diagnostics": {
+                    "marian": {
+                        "enabled": False,
+                        "eligible": language == "en" and mode == "ai_detection",
+                        "attempted": False,
+                        "dependency_ready": False,
+                        "used": False,
+                        "status": "disabled",
+                        "reason": "USE_MARIAN_MT=false",
+                    }
+                },
+            }
 
     monkeypatch.setattr(rewrite_api, "get_deepseek_service", lambda: FakeRewriteService())
 
@@ -142,3 +191,14 @@ def test_rewrite_supports_sentence_unit_and_option_count(client, monkeypatch):
     assert payload["unit"] == "sentence"
     assert len(payload["options"]) == 2
     assert payload["meta"][0]["source"] == "deepseek"
+    assert payload["diagnostics"]["marian"]["status"] == "disabled"
+
+
+def test_api_info_contains_marian_runtime(client):
+    response = client.get("/api/v1/info")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert "runtime" in payload
+    assert "marian" in payload["runtime"]
+    assert "dependency_ready" in payload["runtime"]["marian"]

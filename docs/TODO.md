@@ -1,22 +1,20 @@
-# Grain 项目待办（当前版）
+﻿# Grain 项目待办（当前版）
 
 > 最后更新：2026-02-07  
-> 当前版本：v3.1.2  
-> 说明：本文件仅保留**当前可执行待办**；历史 Sprint 过程请参考 `docs/开发日志.md` 与 `docs/v3.1.0完成总结.md`（历史快照）。
+> 当前版本：v3.1.2-observability  
+> 说明：本文件仅保留**当前可执行待办**；历史 Sprint 过程请参考 `docs/开发日志.md`。
 
 ---
 
 ## P0（当前阻塞）
 
-- [ ] 恢复 Mutagen 本机环境并验证 `mutagen project start`
-- [ ] 将 v3.1.2 同步到 `dev.grain.capootech.com`
-- [ ] 在 dev 环境复跑闭环验收（上传 -> 选句 -> 导出）并落库状态报告
+- [ ] 预览前端健康检查稳定化（`docker-compose.preview.yml` healthcheck 超时策略）
 
 ## P1（重要）
 
-- [ ] 导出可观测性：增加 `failed_ids` 频次统计（按时间窗）
-- [ ] Marian 可观测性：输出依赖探测结果与候选回退原因
-- [ ] API 健康信息增强：在 `/api/v1/info` 暴露更明确的运行能力字段
+- [ ] 导出统计持久化：从内存态升级到可持久化方案（SQLite/日志聚合）
+- [ ] 预览环境安装 Marian 依赖并验证 `status=enabled` 路径
+- [ ] 新增 Marian 启用场景的 API 回归用例（含 `used` / `generation_failed` 真实路径）
 
 ## P2（优化）
 
@@ -26,12 +24,14 @@
 
 ---
 
-## 已完成（v3.1.2）
+## 已完成（v3.1.2-observability）
 
-- [x] 句子替换改为 offset 精确替换
-- [x] 新增 Playwright 半真实 E2E
-- [x] 修复 `GET /api/v1/upload/documents/{doc_id}`（由 501 改为可用）
-- [x] 文档全量巡检并补充状态报告
+- [x] 恢复 Mutagen 本机环境并验证同步会话
+- [x] 将当前实现同步并回归 `dev.grain.capootech.com`
+- [x] 导出可观测性：新增 `GET /api/v1/export/stats`
+- [x] Marian 可观测性：`/api/v1/rewrite` 新增 `diagnostics.marian`
+- [x] API运行态增强：`/api/v1/info` 新增 `runtime.marian`
+- [x] 自动化验证：`pytest 19 passed`、前端 build/e2e 通过
 
 ---
 
