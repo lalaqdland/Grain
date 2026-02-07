@@ -2,13 +2,8 @@
 XML骨架处理器 - 用于保留Word文档格式
 """
 
-import os
-import uuid
-from typing import Dict, List, Any
+from typing import Dict, Any
 from docx import Document
-from docx.oxml import parse_xml
-from docx.oxml.ns import qn
-from lxml import etree
 
 
 class XMLProcessor:
@@ -34,14 +29,15 @@ class XMLProcessor:
             包含骨架信息的字典
         """
         paragraphs_info = []
+        self.paragraph_map = {}
         
         for idx, para in enumerate(self.document.paragraphs):
             # 跳过空段落
             if not para.text.strip():
                 continue
             
-            # 生成唯一ID
-            para_id = f"para_{uuid.uuid4().hex[:12]}"
+            # 使用稳定ID，避免上传展示与导出写回映射错位
+            para_id = self._build_paragraph_id(idx)
             
             # 保存段落对象引用
             self.paragraph_map[para_id] = para
@@ -94,6 +90,11 @@ class XMLProcessor:
         
         return True
     
+    @staticmethod
+    def _build_paragraph_id(index: int) -> str:
+        """根据段落索引生成稳定ID。"""
+        return f"para_{index:06d}"
+    
     def save_document(self, output_path: str) -> str:
         """
         保存修改后的文档
@@ -107,15 +108,32 @@ class XMLProcessor:
         self.document.save(output_path)
         return output_path
     
-    def apply_modifications(self, modifications: Dict[str, str]) -> None:
+    def apply_modifications(self, modifications: Dict[str, str]) -> Dict[str, Any]:
         """
         批量应用修改
         
         Args:
             modifications: 段落ID到新文本的映射
+        
+        Returns:
+            应用结果明细
         """
+        applied_ids = []
+        failed_ids = []
+
         for para_id, new_text in modifications.items():
-            self.replace_paragraph_text(para_id, new_text)
+            if self.replace_paragraph_text(para_id, new_text):
+                applied_ids.append(para_id)
+            else:
+                failed_ids.append(para_id)
+
+        return {
+            "requested_count": len(modifications),
+            "applied_count": len(applied_ids),
+            "failed_count": len(failed_ids),
+            "applied_ids": applied_ids,
+            "failed_ids": failed_ids,
+        }
 
 
 # 全局存储：文档ID到XMLProcessor的映射
@@ -160,4 +178,9 @@ def remove_processor(doc_id: str) -> None:
     """
     if doc_id in _document_processors:
         del _document_processors[doc_id]
+
+
+def clear_processors() -> None:
+    """清理全部处理器（测试场景使用）。"""
+    _document_processors.clear()
 

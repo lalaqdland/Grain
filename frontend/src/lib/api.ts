@@ -2,8 +2,10 @@ import axios from 'axios'
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001'
 
-type RewriteMode = 'plagiarism' | 'ai_detection'
-type Language = 'zh' | 'en'
+export type RewriteMode = 'plagiarism' | 'ai_detection'
+export type Language = 'zh' | 'en'
+export type RewriteUnit = 'sentence' | 'paragraph'
+export type RewriteSource = 'deepseek' | 'marian'
 
 export interface ParagraphInfo {
   id: string
@@ -27,12 +29,18 @@ export interface DocumentUploadResponse {
   data: DocumentInfo | null
 }
 
+export interface RewriteOptionMeta {
+  source: RewriteSource
+}
+
 export interface RewriteResponse {
   success: boolean
   message: string
   options: string[]
   mode: RewriteMode
   language: Language
+  unit: RewriteUnit
+  meta?: RewriteOptionMeta[]
 }
 
 export interface HealthResponse {
@@ -47,12 +55,13 @@ export interface ApiInfoResponse {
     plagiarism_fix: boolean
     ai_detection_fix: boolean
     format_preservation: boolean
+    sentence_rewrite?: boolean
+    marian_optional?: boolean
   }
   supported_formats: string[]
   max_file_size: string
 }
 
-// 创建axios实例
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
   timeout: 30000,
@@ -61,70 +70,64 @@ const apiClient = axios.create({
   },
 })
 
-// 请求拦截器
-apiClient.interceptors.request.use(
-  (config) => {
-    return config
-  },
-  (error) => {
-    return Promise.reject(error)
-  }
-)
-
-// 响应拦截器
 apiClient.interceptors.response.use(
-  (response) => {
-    return response.data
-  },
+  (response) => response,
   (error) => {
-    const message = error.response?.data?.message || '请求失败'
+    const message = error.response?.data?.message || error.response?.data?.detail || '请求失败'
     console.error('API Error:', message)
     return Promise.reject(error)
   }
 )
 
-// API方法
 export const api = {
-  // 健康检查
   healthCheck: async (): Promise<HealthResponse> => {
-    const { data } = await apiClient.get<HealthResponse>('/health')
-    return data
+    const response = await apiClient.get<HealthResponse>('/health')
+    return response.data
   },
-  
-  // 获取API信息
+
   getApiInfo: async (): Promise<ApiInfoResponse> => {
-    const { data } = await apiClient.get<ApiInfoResponse>('/api/v1/info')
-    return data
+    const response = await apiClient.get<ApiInfoResponse>('/api/v1/info')
+    return response.data
   },
-  
-  // 上传文档
+
   uploadDocument: async (file: File): Promise<DocumentUploadResponse> => {
     const formData = new FormData()
     formData.append('file', file)
-    const { data } = await apiClient.post<DocumentUploadResponse>('/api/v1/upload', formData, {
+
+    const response = await apiClient.post<DocumentUploadResponse>('/api/v1/upload', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
     })
-    return data
+    return response.data
   },
-  
-  // 改写文本
+
   rewriteText: async (payload: {
     text: string
     mode: RewriteMode
     language: Language
+    unit?: RewriteUnit
+    option_count?: number
   }): Promise<RewriteResponse> => {
-    const { data } = await apiClient.post<RewriteResponse>('/api/v1/rewrite', payload)
-    return data
+    const response = await apiClient.post<RewriteResponse>('/api/v1/rewrite', payload)
+    return response.data
   },
-  
-  // 导出文档
-  exportDocument: async (documentId: string): Promise<Blob> => {
-    const { data } = await apiClient.get<Blob>(`/api/v1/export/${documentId}`, {
-      responseType: 'blob',
-    })
-    return data
+
+  exportDocument: async (
+    docId: string,
+    modifications: Record<string, string>
+  ): Promise<Blob> => {
+    const response = await apiClient.post<Blob>(
+      '/api/v1/export',
+      {
+        doc_id: docId,
+        modifications,
+      },
+      {
+        responseType: 'blob',
+      }
+    )
+    return response.data
   },
 }
 

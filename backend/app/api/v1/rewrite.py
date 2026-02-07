@@ -28,18 +28,22 @@ async def rewrite_text(request: RewriteRequest):
         deepseek_service = get_deepseek_service()
         
         # 调用改写服务
-        options = deepseek_service.rewrite_text(
+        rewrite_result = deepseek_service.rewrite_text(
             text=request.text,
             mode=request.mode,
-            language=request.language
+            language=request.language,
+            unit=request.unit,
+            option_count=request.option_count,
         )
         
         return RewriteResponse(
             success=True,
             message="改写成功",
-            options=options,
+            options=rewrite_result["options"],
             mode=request.mode,
-            language=request.language
+            language=request.language,
+            unit=request.unit,
+            meta=[{"source": source} for source in rewrite_result["sources"]],
         )
         
     except ValueError as e:
