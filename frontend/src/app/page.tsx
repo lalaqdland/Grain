@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react'
 import { useDropzone } from 'react-dropzone'
+import Image from 'next/image'
 import { api } from '@/lib/api'
 import { formatFileSize } from '@/lib/utils'
 
@@ -20,6 +21,12 @@ interface Document {
 }
 
 const MAX_FILE_SIZE = 10485760 // 10MB
+const CAPOO_IMAGES = [
+  { src: '/images/capoo/capoo-01.webp', alt: 'Capoo 本猫照片 1', width: 3072, height: 4096 },
+  { src: '/images/capoo/capoo-02.webp', alt: 'Capoo 本猫照片 2', width: 4096, height: 3072 },
+  { src: '/images/capoo/capoo-03.webp', alt: 'Capoo 本猫照片 3', width: 3072, height: 4096 },
+  { src: '/images/capoo/capoo-04.webp', alt: 'Capoo 本猫照片 4', width: 3072, height: 4096 }
+]
 
 export default function Home() {
   const [mode, setMode] = useState<Mode>('plagiarism')
@@ -474,6 +481,31 @@ export default function Home() {
             </div>
           </div>
         )}
+
+        <div className="mt-16 max-w-5xl mx-auto">
+          <div className="text-center mb-8">
+            <h2 className="text-2xl font-semibold text-slate-800">Capoo 本猫</h2>
+            <p className="text-sm text-slate-500 mt-2">四张咖波写真，献给 Grain 用户</p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {CAPOO_IMAGES.map((image, index) => (
+              <div
+                key={image.src}
+                className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow"
+              >
+                <Image
+                  src={image.src}
+                  alt={image.alt}
+                  width={image.width}
+                  height={image.height}
+                  className="w-full h-auto object-cover"
+                  priority={index === 0}
+                  loading={index === 0 ? undefined : 'lazy'}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
 
         {/* 版本信息 */}
         <p className="text-center mt-12 text-xs text-slate-400">
