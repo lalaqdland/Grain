@@ -1,0 +1,6 @@
+# Status 文档
+
+- 历史测试报告：`docs/status/测试报告-2026-02-03.md`
+- 当前闭环修复报告：`docs/status/测试报告-2026-02-07-核心闭环修复.md`
+- Offset替换与E2E报告：`docs/status/测试报告-2026-02-07-offset替换与E2E.md`
+- 前端交互验收清单：`docs/status/前端交互验收清单-2026-02-07.md`

@@ -10,7 +10,7 @@ settings = get_settings()
 app = FastAPI(
     title="Grain API",
     description="The AI Humanizer & Academic Shield - 守拙",
-    version="3.1.0",
+    version="3.1.2",
     docs_url="/docs",
     redoc_url="/redoc"
 )
@@ -36,7 +36,7 @@ async def root():
     """根路径"""
     return {
         "message": "Welcome to Grain API",
-        "version": "3.1.0",
+        "version": "3.1.2",
         "status": "running"
     }
 
@@ -47,7 +47,7 @@ async def health_check():
     return {
         "status": "healthy",
         "service": "Grain API",
-        "version": "3.1.0"
+        "version": "3.1.2"
     }
 
 
@@ -59,7 +59,9 @@ async def api_info():
         "features": {
             "plagiarism_fix": True,
             "ai_detection_fix": True,
-            "format_preservation": True
+            "format_preservation": True,
+            "sentence_rewrite": True,
+            "marian_optional": settings.use_marian_mt,
         },
         "supported_formats": [".docx"],
         "max_file_size": f"{settings.max_upload_size / 1024 / 1024}MB"

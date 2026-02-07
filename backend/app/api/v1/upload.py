@@ -2,16 +2,13 @@
 文件上传API端点
 """
 
-import os
 import uuid
-import shutil
 from pathlib import Path
 from fastapi import APIRouter, UploadFile, File, HTTPException
-from fastapi.responses import JSONResponse
 
 from app.models.document import DocumentUploadResponse, DocumentInfo, ParagraphInfo
-from app.core.docx_parser import DocxParser
 from app.core.xml_processor import XMLProcessor, register_processor
+from app.core.document_registry import register_document, get_document as get_registered_document
 from config import get_settings
 
 router = APIRouter()
@@ -34,7 +31,7 @@ async def upload_document(file: UploadFile = File(...)):
     """
     
     # 1. 验证文件格式
-    if not file.filename.endswith('.docx'):
+    if not file.filename or not file.filename.lower().endswith('.docx'):
         raise HTTPException(
             status_code=400,
             detail="❌ 仅支持 .docx 格式\n\n为了保证完美的排版格式，请在 Word 中将文件'另存为' .docx 格式后再上传"
@@ -65,24 +62,30 @@ async def upload_document(file: UploadFile = File(...)):
         with open(temp_file_path, "wb") as f:
             f.write(file_content)
         
-        # 5. 解析文档
-        parser = DocxParser(str(temp_file_path))
-        parsed_data = parser.parse()
-        
-        # 6. 创建XML处理器并注册（用于后续导出）
+        # 5. 创建XML处理器并提取骨架（上传展示和导出统一使用同一套段落ID）
         xml_processor = XMLProcessor(str(temp_file_path))
-        xml_processor.extract_skeleton()
+        skeleton = xml_processor.extract_skeleton()
         register_processor(doc_id, xml_processor)
         
-        # 7. 构建响应
-        paragraphs = [ParagraphInfo(**p) for p in parsed_data["paragraphs"]]
+        # 6. 构建响应
+        paragraphs = [
+            ParagraphInfo(
+                id=p["id"],
+                text=p["text"],
+                style=p["style"],
+                is_modified=False,
+                original_text=None,
+            )
+            for p in skeleton["paragraphs"]
+        ]
         
         document_info = DocumentInfo(
             id=doc_id,
             filename=file.filename,
             paragraphs=paragraphs,
-            total_paragraphs=parsed_data["total_paragraphs"]
+            total_paragraphs=skeleton["total_paragraphs"]
         )
+        register_document(document_info)
         
         return DocumentUploadResponse(
             success=True,
@@ -108,8 +111,8 @@ async def upload_document(file: UploadFile = File(...)):
         )
 
 
-@router.get("/documents/{doc_id}")
-async def get_document(doc_id: str):
+@router.get("/upload/documents/{doc_id}", response_model=DocumentUploadResponse)
+async def get_document_detail(doc_id: str):
     """
     获取文档信息
     
@@ -119,9 +122,13 @@ async def get_document(doc_id: str):
     Returns:
         文档信息
     """
-    # TODO: 实现文档信息获取（从缓存或数据库）
-    return JSONResponse(
-        status_code=501,
-        content={"message": "功能开发中"}
-    )
+    try:
+        document_info = get_registered_document(doc_id)
+        return DocumentUploadResponse(
+            success=True,
+            message="文档获取成功",
+            data=document_info,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
