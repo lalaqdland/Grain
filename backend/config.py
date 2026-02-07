@@ -28,9 +28,12 @@ class Settings(BaseSettings):
     
     # 临时文件存储路径
     temp_storage_path: str = str((BASE_DIR / "../storage/temp").resolve())
+
+    # 导出失败统计存储（SQLite）
+    export_stats_db_path: str = str((BASE_DIR / "../storage/export_stats.db").resolve())
     
     # MarianMT配置
-    use_marian_mt: bool = False
+    use_marian_mt: bool = True
     marian_en_de_model: str = Field(
         default="Helsinki-NLP/opus-mt-en-de",
         validation_alias=AliasChoices("MARIAN_EN_DE_MODEL", "MARIAN_MODEL_PATH"),

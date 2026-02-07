@@ -20,6 +20,7 @@ services:
       - CORS_ORIGINS=http://localhost:3001,http://127.0.0.1:3001
       - TEMP_STORAGE_PATH=/storage/temp
       - MODEL_CACHE_DIR=/models  # 模型缓存目录
+      - USE_MARIAN_MT=true
     env_file:
       - ./backend/.env
     networks:

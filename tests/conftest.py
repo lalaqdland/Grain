@@ -25,8 +25,10 @@ def client(tmp_path, monkeypatch):
     settings = get_settings()
     temp_dir = tmp_path / "temp_storage"
     temp_dir.mkdir(parents=True, exist_ok=True)
+    stats_db_path = tmp_path / "export_stats.db"
 
     monkeypatch.setattr(settings, "temp_storage_path", str(temp_dir))
+    monkeypatch.setattr(settings, "export_stats_db_path", str(stats_db_path))
     monkeypatch.setattr(upload_api, "settings", settings)
     monkeypatch.setattr(export_api, "settings", settings)
 

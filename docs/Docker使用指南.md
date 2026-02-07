@@ -1,7 +1,7 @@
 # Docker 使用指南（当前版）
 
 > 最后更新：2026-02-07  
-> 当前版本：v3.1.2
+> 当前版本：v3.1.3
 
 ---
 
@@ -53,9 +53,10 @@ docker compose up -d --build
 
 ```env
 DEEPSEEK_API_KEY=...
-USE_MARIAN_MT=false
+USE_MARIAN_MT=true
 TEMP_STORAGE_PATH=/storage/temp
 MODEL_CACHE_DIR=/models
+EXPORT_STATS_DB_PATH=/storage/export_stats.db
 ```
 
 ---
@@ -79,8 +80,8 @@ MODEL_CACHE_DIR=/models
 
 ### 4.3 Marian 相关报错
 
-- 未安装依赖时请保持 `USE_MARIAN_MT=false`
-- 或在镜像中补安装 `transformers/torch/sentencepiece`
+- 当前版本默认启用 Marian（`USE_MARIAN_MT=true`）
+- 若需要紧急回滚 Marian 链路，可临时设置 `USE_MARIAN_MT=false` 并重建 backend 容器
 
 ---
 

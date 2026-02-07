@@ -11,7 +11,7 @@ settings = get_settings()
 app = FastAPI(
     title="Grain API",
     description="The AI Humanizer & Academic Shield - 守拙",
-    version="3.1.2",
+    version="3.1.3",
     docs_url="/docs",
     redoc_url="/redoc"
 )
@@ -37,7 +37,7 @@ async def root():
     """根路径"""
     return {
         "message": "Welcome to Grain API",
-        "version": "3.1.2",
+        "version": "3.1.3",
         "status": "running"
     }
 
@@ -48,7 +48,7 @@ async def health_check():
     return {
         "status": "healthy",
         "service": "Grain API",
-        "version": "3.1.2"
+        "version": "3.1.3"
     }
 
 

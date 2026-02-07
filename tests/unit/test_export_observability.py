@@ -3,8 +3,8 @@ from datetime import datetime, timedelta, timezone
 from app.core.export_observability import ExportFailureStatsStore
 
 
-def test_query_aggregates_failed_requests_and_ids():
-    store = ExportFailureStatsStore(max_events=20)
+def test_query_aggregates_failed_requests_and_ids(tmp_path):
+    store = ExportFailureStatsStore(db_path=str(tmp_path / "stats.db"), max_events=20)
     now = datetime(2026, 2, 7, 12, 0, tzinfo=timezone.utc)
 
     store.record_failure("doc_a", ["p1", "p2"], timestamp_utc=now - timedelta(minutes=30))
@@ -20,8 +20,8 @@ def test_query_aggregates_failed_requests_and_ids():
     assert payload["by_doc"][0]["failed_ids"] == 3
 
 
-def test_query_supports_doc_id_filter():
-    store = ExportFailureStatsStore(max_events=20)
+def test_query_supports_doc_id_filter(tmp_path):
+    store = ExportFailureStatsStore(db_path=str(tmp_path / "stats.db"), max_events=20)
     now = datetime(2026, 2, 7, 12, 0, tzinfo=timezone.utc)
 
     store.record_failure("doc_a", ["p1"], timestamp_utc=now - timedelta(minutes=15))
@@ -42,8 +42,8 @@ def test_query_supports_doc_id_filter():
     ]
 
 
-def test_query_respects_window_and_top_n():
-    store = ExportFailureStatsStore(max_events=20)
+def test_query_respects_window_and_top_n(tmp_path):
+    store = ExportFailureStatsStore(db_path=str(tmp_path / "stats.db"), max_events=20)
     now = datetime(2026, 2, 7, 12, 0, tzinfo=timezone.utc)
 
     store.record_failure("doc_old", ["p1"], timestamp_utc=now - timedelta(minutes=90))
@@ -55,3 +55,18 @@ def test_query_respects_window_and_top_n():
 
     assert payload["summary"]["failed_requests"] == 3
     assert [item["doc_id"] for item in payload["by_doc"]] == ["doc_a", "doc_b"]
+
+
+def test_query_persists_across_store_instances(tmp_path):
+    db_path = str(tmp_path / "stats.db")
+    now = datetime(2026, 2, 7, 12, 0, tzinfo=timezone.utc)
+
+    first_store = ExportFailureStatsStore(db_path=db_path)
+    first_store.record_failure("doc_a", ["p1", "p2"], timestamp_utc=now - timedelta(minutes=5))
+
+    second_store = ExportFailureStatsStore(db_path=db_path)
+    payload = second_store.query(window_minutes=60, now_utc=now)
+
+    assert payload["summary"]["failed_requests"] == 1
+    assert payload["summary"]["failed_ids"] == 2
+    assert payload["by_doc"][0]["doc_id"] == "doc_a"

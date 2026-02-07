@@ -2,6 +2,7 @@
 文档导出API端点
 """
 
+import logging
 import os
 import uuid
 from fastapi import APIRouter, HTTPException, Query
@@ -14,6 +15,7 @@ from config import get_settings
 
 router = APIRouter()
 settings = get_settings()
+logger = logging.getLogger(__name__)
 
 
 class ExportRequest(BaseModel):
@@ -52,10 +54,20 @@ async def export_document(request: ExportRequest):
         # 应用修改
         apply_result = processor.apply_modifications(request.modifications)
         if apply_result["failed_ids"]:
-            get_export_failure_stats_store().record_failure(
-                doc_id=request.doc_id,
-                failed_ids=apply_result["failed_ids"],
-            )
+            try:
+                get_export_failure_stats_store().record_failure(
+                    doc_id=request.doc_id,
+                    failed_ids=apply_result["failed_ids"],
+                )
+            except Exception:
+                logger.warning(
+                    "failed to record export failure stats",
+                    extra={
+                        "doc_id": request.doc_id,
+                        "failed_ids_count": len(apply_result["failed_ids"]),
+                    },
+                    exc_info=True,
+                )
             raise HTTPException(
                 status_code=400,
                 detail={
@@ -89,16 +101,19 @@ async def export_document(request: ExportRequest):
 
 @router.get("/export/stats")
 async def get_export_failure_stats(
-    window_minutes: int = Query(default=60, ge=1, le=1440),
+    window_minutes: int = Query(default=60, ge=1, le=43200),
     doc_id: str | None = Query(default=None),
     top_n: int = Query(default=20, ge=1, le=100),
 ):
     """查询导出失败统计。"""
-    return get_export_failure_stats_store().query(
-        window_minutes=window_minutes,
-        doc_id=doc_id,
-        top_n=top_n,
-    )
+    try:
+        return get_export_failure_stats_store().query(
+            window_minutes=window_minutes,
+            doc_id=doc_id,
+            top_n=top_n,
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"导出统计查询失败: {str(exc)}") from exc
 
 
 @router.get("/export/{doc_id}")

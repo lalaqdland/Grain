@@ -4,6 +4,7 @@ from docx import Document
 
 from app.core.xml_processor import get_processor
 import app.api.v1.rewrite as rewrite_api
+import app.services.deepseek as deepseek_module
 
 
 DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
@@ -101,6 +102,14 @@ def test_export_stats_aggregates_failed_ids(client, sample_docx_bytes):
     assert filtered_payload["by_doc"][0]["doc_id"] == uploaded["id"]
 
 
+def test_export_stats_window_limit_boundaries(client):
+    ok_response = client.get("/api/v1/export/stats?window_minutes=43200")
+    assert ok_response.status_code == 200
+
+    too_large_response = client.get("/api/v1/export/stats?window_minutes=43201")
+    assert too_large_response.status_code == 422
+
+
 def test_export_applies_modifications_to_docx(client, sample_docx_bytes):
     uploaded = upload_sample_doc(client, sample_docx_bytes)
     target_id = uploaded["paragraphs"][0]["id"]
@@ -192,6 +201,96 @@ def test_rewrite_supports_sentence_unit_and_option_count(client, monkeypatch):
     assert len(payload["options"]) == 2
     assert payload["meta"][0]["source"] == "deepseek"
     assert payload["diagnostics"]["marian"]["status"] == "disabled"
+
+
+def test_rewrite_marian_used_path(client, monkeypatch):
+    service = deepseek_module.DeepSeekService.__new__(deepseek_module.DeepSeekService)
+    monkeypatch.setattr(
+        service,
+        "_rewrite_with_deepseek",
+        lambda text, mode, language, unit, option_count, max_retries: ["d1", "d2", "d3"],
+    )
+    monkeypatch.setattr(
+        deepseek_module,
+        "get_marian_runtime_info",
+        lambda: {
+            "enabled": True,
+            "dependency_ready": True,
+            "dependencies": {"transformers": True, "torch": True, "sentencepiece": True},
+            "status": "enabled",
+            "reason": None,
+        },
+    )
+
+    class FakeMarianService:
+        def back_translate_en(self, text):
+            return "marian_noise_option"
+
+    monkeypatch.setattr(deepseek_module, "get_marian_service", lambda: FakeMarianService())
+    monkeypatch.setattr(rewrite_api, "get_deepseek_service", lambda: service)
+
+    response = client.post(
+        "/api/v1/rewrite",
+        json={
+            "text": "This is one sentence.",
+            "mode": "ai_detection",
+            "language": "en",
+            "unit": "sentence",
+            "option_count": 3,
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["diagnostics"]["marian"]["status"] == "used"
+    assert payload["diagnostics"]["marian"]["attempted"] is True
+    assert payload["diagnostics"]["marian"]["used"] is True
+    assert payload["meta"][-1]["source"] == "marian"
+
+
+def test_rewrite_marian_generation_failed_path(client, monkeypatch):
+    service = deepseek_module.DeepSeekService.__new__(deepseek_module.DeepSeekService)
+    monkeypatch.setattr(
+        service,
+        "_rewrite_with_deepseek",
+        lambda text, mode, language, unit, option_count, max_retries: ["d1", "d2", "d3"],
+    )
+    monkeypatch.setattr(
+        deepseek_module,
+        "get_marian_runtime_info",
+        lambda: {
+            "enabled": True,
+            "dependency_ready": True,
+            "dependencies": {"transformers": True, "torch": True, "sentencepiece": True},
+            "status": "enabled",
+            "reason": None,
+        },
+    )
+
+    class BrokenMarianService:
+        def back_translate_en(self, text):
+            raise RuntimeError("mock marian failure")
+
+    monkeypatch.setattr(deepseek_module, "get_marian_service", lambda: BrokenMarianService())
+    monkeypatch.setattr(rewrite_api, "get_deepseek_service", lambda: service)
+
+    response = client.post(
+        "/api/v1/rewrite",
+        json={
+            "text": "This is one sentence.",
+            "mode": "ai_detection",
+            "language": "en",
+            "unit": "sentence",
+            "option_count": 3,
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["diagnostics"]["marian"]["status"] == "generation_failed"
+    assert payload["diagnostics"]["marian"]["attempted"] is True
+    assert payload["diagnostics"]["marian"]["used"] is False
+    assert payload["meta"] == [{"source": "deepseek"}, {"source": "deepseek"}, {"source": "deepseek"}]
 
 
 def test_api_info_contains_marian_runtime(client):

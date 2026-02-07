@@ -1,20 +1,20 @@
-﻿# Grain 项目待办（当前版）
+# Grain 项目待办（当前版）
 
 > 最后更新：2026-02-07  
-> 当前版本：v3.1.2-observability  
+> 当前版本：v3.1.3  
 > 说明：本文件仅保留**当前可执行待办**；历史 Sprint 过程请参考 `docs/开发日志.md`。
 
 ---
 
 ## P0（当前阻塞）
 
-- [ ] 预览前端健康检查稳定化（`docker-compose.preview.yml` healthcheck 超时策略）
+- [ ] 执行 dev 预览环境重建并完成线上验收（`/opt/gain-preview`）
 
 ## P1（重要）
 
-- [ ] 导出统计持久化：从内存态升级到可持久化方案（SQLite/日志聚合）
-- [ ] 预览环境安装 Marian 依赖并验证 `status=enabled` 路径
-- [ ] 新增 Marian 启用场景的 API 回归用例（含 `used` / `generation_failed` 真实路径）
+- [ ] 验证 `export_stats.db` 在 dev 环境重启后仍保留统计数据
+- [ ] Marian 全启用后的首轮模型加载耗时与失败率观测（dev）
+- [ ] 为 SQLite 统计补充体积监控与备份/归档策略
 
 ## P2（优化）
 
@@ -24,14 +24,15 @@
 
 ---
 
-## 已完成（v3.1.2-observability）
+## 已完成（v3.1.3）
 
-- [x] 恢复 Mutagen 本机环境并验证同步会话
-- [x] 将当前实现同步并回归 `dev.grain.capootech.com`
-- [x] 导出可观测性：新增 `GET /api/v1/export/stats`
-- [x] Marian 可观测性：`/api/v1/rewrite` 新增 `diagnostics.marian`
-- [x] API运行态增强：`/api/v1/info` 新增 `runtime.marian`
-- [x] 自动化验证：`pytest 19 passed`、前端 build/e2e 通过
+- [x] 预览前端健康检查稳定化（高容错参数）
+- [x] 导出统计持久化：`export/stats` 升级为 SQLite
+- [x] `window_minutes` 上限提升到 `43200`
+- [x] Marian 全环境启用（默认值 + Compose 显式开关）
+- [x] Marian 依赖纳入后端正式依赖
+- [x] Marian API 回归用例补齐（`used` / `generation_failed`）
+- [x] 自动化验证：`pytest 23 passed`、前端 build/e2e 通过
 
 ---
 

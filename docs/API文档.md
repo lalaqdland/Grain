@@ -1,7 +1,7 @@
 ﻿# Grain API 文档
 
-> 最后更新：2026-02-07（v3.1.2-observability）  
-> 当前版本：v3.1.2  
+> 最后更新：2026-02-07（v3.1.3）  
+> 当前版本：v3.1.3  
 > 维护约定：接口变更后同步更新本文档与 `docs/status/` 测试报告。
 
 ---
@@ -24,7 +24,7 @@
 | POST | `/api/v1/rewrite` | 文本改写（句子/段落） | 已实现 |
 | POST | `/api/v1/export` | 导出修改后文档 | 已实现 |
 | GET | `/api/v1/export/{doc_id}` | 导出当前文档状态 | 已实现 |
-| GET | `/api/v1/export/stats` | 导出失败统计查询（时间窗/文档过滤） | 已实现（v3.1.2-observability） |
+| GET | `/api/v1/export/stats` | 导出失败统计查询（时间窗/文档过滤） | 已实现（v3.1.3，SQLite 持久化） |
 
 ---
 
@@ -38,7 +38,7 @@
 {
   "status": "healthy",
   "service": "Grain API",
-  "version": "3.1.2"
+  "version": "3.1.3"
 }
 ```
 
@@ -54,19 +54,19 @@
     "ai_detection_fix": true,
     "format_preservation": true,
     "sentence_rewrite": true,
-    "marian_optional": false
+    "marian_optional": true
   },
   "runtime": {
     "marian": {
-      "enabled": false,
-      "dependency_ready": false,
+      "enabled": true,
+      "dependency_ready": true,
       "dependencies": {
-        "transformers": false,
-        "torch": false,
-        "sentencepiece": false
+        "transformers": true,
+        "torch": true,
+        "sentencepiece": true
       },
-      "status": "disabled",
-      "reason": "USE_MARIAN_MT=false"
+      "status": "enabled",
+      "reason": null
     }
   },
   "supported_formats": [".docx"],
@@ -173,13 +173,13 @@
   ],
   "diagnostics": {
     "marian": {
-      "enabled": false,
+      "enabled": true,
       "eligible": true,
-      "attempted": false,
-      "dependency_ready": false,
-      "used": false,
-      "status": "disabled",
-      "reason": "USE_MARIAN_MT=false"
+      "attempted": true,
+      "dependency_ready": true,
+      "used": true,
+      "status": "used",
+      "reason": null
     }
   }
 }
@@ -230,10 +230,10 @@
 
 ### 3.8 GET `/api/v1/export/stats`
 
-说明：查询导出失败统计（内存聚合，服务重启后清空）。
+说明：查询导出失败统计（SQLite 持久化，服务重启后保留）。
 
 Query 参数：
-- `window_minutes`：统计时间窗（默认 `60`，范围 `1..1440`）
+- `window_minutes`：统计时间窗（默认 `60`，范围 `1..43200`，约30天）
 - `doc_id`：可选，仅查询目标文档
 - `top_n`：按失败请求数排序的文档数量（默认 `20`，范围 `1..100`）
 
@@ -276,19 +276,18 @@ Query 参数：
 
 ---
 
-## 5. 最新验收结论（v3.1.2-observability）
+## 5. 最新验收结论（v3.1.3）
 
-- `python -m pytest -q`：`19 passed`
+- `python -m pytest -q`：`23 passed`
 - `cd frontend && npm run build`：通过
 - `cd frontend && npm run e2e`：通过（1 条 Playwright 用例）
 - 新覆盖：
-  - 重复句场景按 selection offset 精确替换
-  - 导出请求 `modifications` 与页面文本一致
-  - 导出失败不会污染缓存文档状态
-  - `failed_ids` 支持按时间窗与 `doc_id` 统计查询
-  - Marian 链路状态在 `/api/v1/rewrite` 与 `/api/v1/info` 可观测
+  - `export/stats` SQLite 持久化与跨实例可见
+  - `window_minutes` 边界扩展到 `43200`（`43201` 返回 `422`）
+  - Marian API级回归：`used` 与 `generation_failed` 路径
 
 相关报告：
+- `docs/status/测试报告-2026-02-07-v3.1.3-persistence-marian.md`
 - `docs/status/测试报告-2026-02-07-核心闭环修复.md`
 - `docs/status/测试报告-2026-02-07-offset替换与E2E.md`
 - `docs/status/测试报告-2026-02-07-export原子性回归修复.md`

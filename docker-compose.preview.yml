@@ -19,6 +19,7 @@ services:
       CORS_ORIGINS: https://dev.grain.capootech.com,http://127.0.0.1:3101,http://localhost:3101
       TEMP_STORAGE_PATH: /storage/temp
       MODEL_CACHE_DIR: /models
+      USE_MARIAN_MT: "true"
     env_file:
       - ./backend/.env
     networks:
@@ -69,9 +70,9 @@ services:
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000 >/dev/null || exit 1"]
       interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 30s
+      timeout: 10s
+      retries: 8
+      start_period: 180s
 
 networks:
   grain-preview-network:
