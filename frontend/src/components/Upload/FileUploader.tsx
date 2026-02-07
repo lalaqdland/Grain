@@ -30,11 +30,19 @@ export default function FileUploader() {
       const response = await api.uploadDocument(file)
       
       if (response.success && response.data) {
+        const content = response.data.paragraphs.map((paragraph) => ({
+          id: paragraph.id,
+          text: paragraph.text,
+          style: paragraph.style,
+          isModified: paragraph.is_modified,
+          originalText: paragraph.original_text ?? undefined,
+        }))
+
         // 转换数据格式
         const document = {
           id: response.data.id,
           filename: response.data.filename,
-          content: response.data.paragraphs,
+          content,
           uploadedAt: response.data.uploaded_at
         }
         
