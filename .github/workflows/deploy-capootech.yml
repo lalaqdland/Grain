@@ -1,0 +1,99 @@
+name: Deploy CapooTech Landing
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: capootech-landing-prod
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Prepare release metadata
+        id: meta
+        shell: bash
+        run: |
+          set -euo pipefail
+          release_id="$(date +%Y%m%d%H%M%S)-${GITHUB_SHA::7}"
+          echo "release_id=${release_id}" >> "${GITHUB_OUTPUT}"
+          echo "target_host=${{ secrets.HOST_HK_GRAIN }}" >> "${GITHUB_OUTPUT}"
+
+      - name: Prepare SSH
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H "${{ steps.meta.outputs.target_host }}" >> ~/.ssh/known_hosts
+
+      - name: Upload release files
+        shell: bash
+        run: |
+          set -euo pipefail
+          target_host="${{ steps.meta.outputs.target_host }}"
+          release_id="${{ steps.meta.outputs.release_id }}"
+          ssh -i ~/.ssh/id_rsa "root@${target_host}" "mkdir -p /opt/sites/capootech/releases/${release_id}"
+          scp -i ~/.ssh/id_rsa -r sites/capootech/* "root@${target_host}:/opt/sites/capootech/releases/${release_id}/"
+
+      - name: Activate release
+        id: activate
+        shell: bash
+        run: |
+          set -euo pipefail
+          target_host="${{ steps.meta.outputs.target_host }}"
+          release_id="${{ steps.meta.outputs.release_id }}"
+          old_target="$(ssh -i ~/.ssh/id_rsa "root@${target_host}" "readlink -f /opt/sites/capootech/current || true")"
+          echo "old_target=${old_target}" >> "${GITHUB_OUTPUT}"
+
+          ssh -i ~/.ssh/id_rsa "root@${target_host}" "\
+            set -euo pipefail; \
+            find /opt/sites/capootech/releases/${release_id} -type d -exec chmod 755 {} +; \
+            find /opt/sites/capootech/releases/${release_id} -type f -exec chmod 644 {} +; \
+            ln -sfn /opt/sites/capootech/releases/${release_id} /opt/sites/capootech/current; \
+            nginx -t; \
+            systemctl reload nginx"
+
+      - name: Post-deploy health check
+        id: health
+        shell: bash
+        run: |
+          set -euo pipefail
+          for _ in {1..12}; do
+            if curl -fsS --max-time 10 https://capootech.com/ > /tmp/capootech-home.html; then
+              if grep -q "favicon-capoo.svg" /tmp/capootech-home.html && grep -q "咖波科技" /tmp/capootech-home.html && grep -q "id=\"lang-toggle\"" /tmp/capootech-home.html; then
+                exit 0
+              fi
+            fi
+            sleep 5
+          done
+
+          echo "Landing health check failed" >&2
+          exit 1
+
+      - name: Roll back release on failure
+        if: failure() && steps.activate.outputs.old_target != ''
+        shell: bash
+        run: |
+          set -euo pipefail
+          target_host="${{ steps.meta.outputs.target_host }}"
+          old_target="${{ steps.activate.outputs.old_target }}"
+
+          ssh -i ~/.ssh/id_rsa "root@${target_host}" "\
+            set -euo pipefail; \
+            ln -sfn '${old_target}' /opt/sites/capootech/current; \
+            nginx -t; \
+            systemctl reload nginx"
+
+          echo "Rolled back to ${old_target}" >&2
