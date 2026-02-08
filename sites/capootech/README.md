@@ -6,6 +6,7 @@ This directory is the source of truth for `https://capootech.com` static landing
 
 - `index.html`: landing page entry
 - `styles.css`: landing page stylesheet
+- `lang-toggle.js`: language switch logic (default zh, toggle zh/en)
 - `favicon-capoo.svg`: browser tab icon
 - `images/capoo/*.webp`: gallery images
 

@@ -25,7 +25,44 @@ body {
 .page {
   max-width: 1100px;
   margin: 0 auto;
-  padding: 48px 20px 64px;
+  padding: 24px 20px 64px;
+}
+
+.topbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 12px;
+}
+
+.lang-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: #ffffffd9;
+  color: var(--text);
+  padding: 7px 12px;
+  font-size: 0.9rem;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 8px 16px rgba(31, 41, 55, 0.08);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.lang-toggle:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 22px rgba(31, 41, 55, 0.12);
+}
+
+.lang-icon {
+  font-size: 1rem;
+}
+
+.lang-label {
+  min-width: 1.8em;
+  text-align: center;
+  font-weight: 700;
 }
 
 .hero {
@@ -119,5 +156,23 @@ h1 {
   .cta-grid,
   .photos {
     grid-template-columns: 1fr;
+  }
+
+  .card p {
+    min-height: 0;
+  }
+}
+
+@media (max-width: 560px) {
+  .page {
+    padding-top: 16px;
+  }
+
+  .topbar {
+    margin-bottom: 8px;
+  }
+
+  .lang-toggle {
+    padding: 7px 10px;
   }
 }
