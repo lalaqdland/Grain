@@ -1,0 +1,59 @@
+services:
+  backend:
+    image: ${ALIYUN_REGISTRY}/capoo/grain-backend:${IMAGE_TAG}
+    container_name: grain-backend
+    restart: unless-stopped
+    stop_grace_period: 20s
+    command: uvicorn main:app --host 0.0.0.0 --port 8000
+    ports:
+      - "127.0.0.1:8001:8000"
+    volumes:
+      - ./storage:/storage
+      - ./models:/models
+    environment:
+      API_HOST: 0.0.0.0
+      API_PORT: 8000
+      API_RELOAD: "false"
+      CORS_ORIGINS: https://grain.capootech.com,https://capootech.com,https://www.capootech.com
+      TEMP_STORAGE_PATH: /storage/temp
+      MODEL_CACHE_DIR: /models
+    env_file:
+      - ./backend/.env
+    networks:
+      - grain-network
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)\"",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  frontend:
+    image: ${ALIYUN_REGISTRY}/capoo/grain-frontend:${IMAGE_TAG}
+    container_name: grain-frontend
+    restart: unless-stopped
+    stop_grace_period: 30s
+    depends_on:
+      - backend
+    command: sh -c "npm run build && npm run start -- -p 3000"
+    ports:
+      - "127.0.0.1:3001:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: /api
+      NODE_ENV: production
+    networks:
+      - grain-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000 >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 45s
+
+networks:
+  grain-network:
+    driver: bridge
