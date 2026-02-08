@@ -185,8 +185,19 @@ class DeepSeekService:
         sources: List[str],
         option_count: int,
     ) -> tuple[List[str], List[str]]:
-        cleaned_options = [opt.strip() for opt in options if opt and opt.strip()]
-        cleaned_sources = sources[: len(cleaned_options)]
+        cleaned_options: List[str] = []
+        cleaned_sources: List[str] = []
+        for idx, opt in enumerate(options):
+            if not opt:
+                continue
+            stripped = opt.strip()
+            if not stripped:
+                continue
+            cleaned_options.append(stripped)
+            if idx < len(sources) and sources[idx]:
+                cleaned_sources.append(sources[idx])
+            else:
+                cleaned_sources.append("deepseek")
 
         if not cleaned_options:
             cleaned_options = [original_text]

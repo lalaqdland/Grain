@@ -136,3 +136,27 @@ def test_english_ai_detection_marks_no_effect(monkeypatch):
     assert result["diagnostics"]["marian"]["status"] == "no_effect"
     assert result["diagnostics"]["marian"]["attempted"] is True
     assert result["diagnostics"]["marian"]["used"] is False
+
+
+def test_normalize_options_filters_sources_in_parallel():
+    options, sources = deepseek_module.DeepSeekService._normalize_options(
+        original_text="orig",
+        options=["good1", "", "good2"],
+        sources=["deepseek", "marian", "deepseek"],
+        option_count=2,
+    )
+
+    assert options == ["good1", "good2"]
+    assert sources == ["deepseek", "deepseek"]
+
+
+def test_normalize_options_falls_back_when_source_missing():
+    options, sources = deepseek_module.DeepSeekService._normalize_options(
+        original_text="orig",
+        options=["good1", "good2"],
+        sources=["marian"],
+        option_count=2,
+    )
+
+    assert options == ["good1", "good2"]
+    assert sources == ["marian", "deepseek"]
