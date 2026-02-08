@@ -6,7 +6,12 @@ from typing import Any, Dict, List
 from openai import OpenAI
 from config import get_settings
 from app.prompts.rewrite_prompts import get_prompt
-from app.services.marian import get_marian_runtime_info, get_marian_service
+from app.services.marian import (
+    get_marian_runtime_info,
+    get_marian_service,
+    record_marian_generation_attempt,
+    record_marian_generation_failure,
+)
 
 settings = get_settings()
 
@@ -105,6 +110,7 @@ class DeepSeekService:
 
     def _try_marian_option(self, text: str) -> Dict[str, Any]:
         """尝试生成 Marian 候选，并返回详细状态。"""
+        record_marian_generation_attempt()
         try:
             marian_service = get_marian_service()
             candidate = marian_service.back_translate_en(text)
@@ -120,6 +126,7 @@ class DeepSeekService:
                 "reason": "candidate is empty or unchanged",
             }
         except Exception as exc:
+            record_marian_generation_failure(exc)
             return {
                 "candidate": None,
                 "status": "generation_failed",

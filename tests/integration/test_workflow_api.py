@@ -110,6 +110,29 @@ def test_export_stats_window_limit_boundaries(client):
     assert too_large_response.status_code == 422
 
 
+def test_export_stats_storage_endpoint(client, sample_docx_bytes):
+    uploaded = upload_sample_doc(client, sample_docx_bytes)
+    client.post(
+        "/api/v1/export",
+        json={
+            "doc_id": uploaded["id"],
+            "modifications": {"para_not_exist": "replacement"},
+        },
+    )
+
+    response = client.get("/api/v1/export/stats/storage")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["db_size_bytes"] > 0
+    assert payload["event_count"] >= 1
+    assert payload["oldest_event_at"] is not None
+    assert payload["newest_event_at"] is not None
+    assert payload["thresholds"]["warn_bytes"] > 0
+    assert payload["thresholds"]["critical_bytes"] >= payload["thresholds"]["warn_bytes"]
+    assert payload["level"] in {"ok", "warn", "critical"}
+
+
 def test_export_applies_modifications_to_docx(client, sample_docx_bytes):
     uploaded = upload_sample_doc(client, sample_docx_bytes)
     target_id = uploaded["paragraphs"][0]["id"]
@@ -300,4 +323,15 @@ def test_api_info_contains_marian_runtime(client):
     payload = response.json()
     assert "runtime" in payload
     assert "marian" in payload["runtime"]
-    assert "dependency_ready" in payload["runtime"]["marian"]
+    marian_runtime = payload["runtime"]["marian"]
+    assert "dependency_ready" in marian_runtime
+    assert "model_loaded" in marian_runtime
+    assert "first_load_duration_ms" in marian_runtime
+    assert "load_attempts" in marian_runtime
+    assert "load_failures" in marian_runtime
+    assert "generation_attempts" in marian_runtime
+    assert "generation_failures" in marian_runtime
+    assert "generation_failure_rate" in marian_runtime
+    assert "last_generation_error" in marian_runtime
+    assert isinstance(marian_runtime["generation_failure_rate"], float)
+    assert 0.0 <= marian_runtime["generation_failure_rate"] <= 1.0

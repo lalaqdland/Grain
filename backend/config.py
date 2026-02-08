@@ -31,6 +31,8 @@ class Settings(BaseSettings):
 
     # 导出失败统计存储（SQLite）
     export_stats_db_path: str = str((BASE_DIR / "../storage/export_stats.db").resolve())
+    export_stats_db_warn_bytes: int = 10 * 1024 * 1024
+    export_stats_db_critical_bytes: int = 50 * 1024 * 1024
     
     # MarianMT配置
     use_marian_mt: bool = True

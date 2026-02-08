@@ -10,7 +10,7 @@ settings = get_settings()
 # 创建FastAPI应用
 app = FastAPI(
     title="Grain API",
-    description="The AI Humanizer & Academic Shield - 守拙",
+    description="The AI Humanizer & Academic Shield - 字斟句酌",
     version="3.1.3",
     docs_url="/docs",
     redoc_url="/redoc"

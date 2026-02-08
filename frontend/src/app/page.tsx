@@ -366,7 +366,7 @@ export default function Home() {
               Grain
             </span>
           </h1>
-          <p className="text-lg text-slate-600">守拙 · The AI Humanizer & Academic Shield</p>
+          <p className="text-lg text-slate-600">字斟句酌 · The AI Humanizer & Academic Shield</p>
         </div>
 
         <div className="flex justify-center mb-8">

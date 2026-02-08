@@ -25,6 +25,7 @@
 | POST | `/api/v1/export` | 导出修改后文档 | 已实现 |
 | GET | `/api/v1/export/{doc_id}` | 导出当前文档状态 | 已实现 |
 | GET | `/api/v1/export/stats` | 导出失败统计查询（时间窗/文档过滤） | 已实现（v3.1.3，SQLite 持久化） |
+| GET | `/api/v1/export/stats/storage` | 导出统计存储体积与风险分级 | 已实现（v3.1.3） |
 
 ---
 
@@ -66,7 +67,15 @@
         "sentencepiece": true
       },
       "status": "enabled",
-      "reason": null
+      "reason": null,
+      "model_loaded": false,
+      "first_load_duration_ms": null,
+      "load_attempts": 0,
+      "load_failures": 0,
+      "generation_attempts": 0,
+      "generation_failures": 0,
+      "generation_failure_rate": 0.0,
+      "last_generation_error": null
     }
   },
   "supported_formats": [".docx"],
@@ -261,6 +270,32 @@ Query 参数：
 }
 ```
 
+### 3.9 GET `/api/v1/export/stats/storage`
+
+说明：查询导出失败统计 SQLite 的体积、事件边界和风险分级。
+
+响应示例：
+
+```json
+{
+  "generated_at": "2026-02-07T14:39:33.318017+00:00",
+  "db_size_bytes": 20480,
+  "event_count": 1,
+  "oldest_event_at": "2026-02-07T14:39:32.376998+00:00",
+  "newest_event_at": "2026-02-07T14:39:32.376998+00:00",
+  "thresholds": {
+    "warn_bytes": 10485760,
+    "critical_bytes": 52428800
+  },
+  "level": "ok"
+}
+```
+
+分级说明：
+- `ok`：`db_size_bytes < warn_bytes`
+- `warn`：`warn_bytes <= db_size_bytes < critical_bytes`
+- `critical`：`db_size_bytes >= critical_bytes`
+
 ---
 
 ## 4. 状态码
@@ -276,17 +311,19 @@ Query 参数：
 
 ---
 
-## 5. 最新验收结论（v3.1.3）
+## 5. 最新验收结论（v3.1.3 P0/P1）
 
-- `python -m pytest -q`：`23 passed`
+- `python -m pytest -q`：`28 passed`
 - `cd frontend && npm run build`：通过
 - `cd frontend && npm run e2e`：通过（1 条 Playwright 用例）
 - 新覆盖：
   - `export/stats` SQLite 持久化与跨实例可见
+  - `export/stats/storage` 体积分级能力（`ok/warn/critical`）
   - `window_minutes` 边界扩展到 `43200`（`43201` 返回 `422`）
-  - Marian API级回归：`used` 与 `generation_failed` 路径
+  - Marian 运行态新增计数指标与失败率字段
 
 相关报告：
+- `docs/status/测试报告-2026-02-07-dev-preview-v3.1.3-p0-p1.md`
 - `docs/status/测试报告-2026-02-07-v3.1.3-persistence-marian.md`
 - `docs/status/测试报告-2026-02-07-核心闭环修复.md`
 - `docs/status/测试报告-2026-02-07-offset替换与E2E.md`

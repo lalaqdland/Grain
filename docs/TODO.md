@@ -6,15 +6,11 @@
 
 ---
 
-## P0（当前阻塞）
-
-- [ ] 执行 dev 预览环境重建并完成线上验收（`/opt/gain-preview`）
-
 ## P1（重要）
 
-- [ ] 验证 `export_stats.db` 在 dev 环境重启后仍保留统计数据
-- [ ] Marian 全启用后的首轮模型加载耗时与失败率观测（dev）
-- [ ] 为 SQLite 统计补充体积监控与备份/归档策略
+- [ ] rewrite 链路超时与降级策略（避免单 worker 被外部调用阻塞）
+- [ ] 为 SQLite 统计补充备份/归档策略（体积监控已完成）
+- [ ] 基于 `runtime.marian` 与 `/export/stats/storage` 制定告警阈值与看板方案
 
 ## P2（优化）
 
@@ -26,13 +22,17 @@
 
 ## 已完成（v3.1.3）
 
+- [x] 执行 dev 预览环境重建并完成线上验收（`/opt/gain-preview`）
+- [x] 验证 `export_stats.db` 在 dev 环境重启后保留统计数据
 - [x] 预览前端健康检查稳定化（高容错参数）
 - [x] 导出统计持久化：`export/stats` 升级为 SQLite
+- [x] 导出统计存储体积分级接口：`GET /api/v1/export/stats/storage`
 - [x] `window_minutes` 上限提升到 `43200`
 - [x] Marian 全环境启用（默认值 + Compose 显式开关）
+- [x] Marian 运行态新增计数指标与失败率字段
 - [x] Marian 依赖纳入后端正式依赖
 - [x] Marian API 回归用例补齐（`used` / `generation_failed`）
-- [x] 自动化验证：`pytest 23 passed`、前端 build/e2e 通过
+- [x] 自动化验证：`pytest 28 passed`、前端 build/e2e 通过
 
 ---
 

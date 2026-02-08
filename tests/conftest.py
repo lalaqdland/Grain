@@ -18,6 +18,7 @@ import app.api.v1.export as export_api  # noqa: E402
 from app.core.xml_processor import clear_processors  # noqa: E402
 from app.core.document_registry import clear_documents  # noqa: E402
 from app.core.export_observability import clear_export_failure_stats  # noqa: E402
+from app.services.marian import reset_marian_runtime_metrics  # noqa: E402
 
 
 @pytest.fixture
@@ -35,11 +36,13 @@ def client(tmp_path, monkeypatch):
     clear_processors()
     clear_documents()
     clear_export_failure_stats()
+    reset_marian_runtime_metrics()
     with TestClient(app) as test_client:
         yield test_client
     clear_processors()
     clear_documents()
     clear_export_failure_stats()
+    reset_marian_runtime_metrics()
 
 
 @pytest.fixture

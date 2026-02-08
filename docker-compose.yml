@@ -21,6 +21,8 @@ services:
       - TEMP_STORAGE_PATH=/storage/temp
       - MODEL_CACHE_DIR=/models  # 模型缓存目录
       - USE_MARIAN_MT=true
+      - EXPORT_STATS_DB_WARN_BYTES=10485760
+      - EXPORT_STATS_DB_CRITICAL_BYTES=52428800
     env_file:
       - ./backend/.env
     networks:

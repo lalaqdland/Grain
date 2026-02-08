@@ -1,6 +1,17 @@
 import axios from 'axios'
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001'
+function normalizeApiBaseUrl(rawUrl?: string): string {
+  const value = (rawUrl || '').trim()
+  if (!value) {
+    return 'http://localhost:8001'
+  }
+  if (value === '/api' || value === '/api/') {
+    return ''
+  }
+  return value.endsWith('/api') ? value.slice(0, -4) : value
+}
+
+const API_BASE_URL = normalizeApiBaseUrl(process.env.NEXT_PUBLIC_API_URL)
 
 export type RewriteMode = 'plagiarism' | 'ai_detection'
 export type Language = 'zh' | 'en'
@@ -132,4 +143,3 @@ export const api = {
 }
 
 export default apiClient
-

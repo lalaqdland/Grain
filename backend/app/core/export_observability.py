@@ -165,6 +165,61 @@ class ExportFailureStatsStore:
             "by_doc": by_doc,
         }
 
+    def get_storage_metrics(
+        self,
+        warn_bytes: int,
+        critical_bytes: int,
+    ) -> dict[str, Any]:
+        """查询导出统计SQLite存储指标。"""
+        safe_warn_bytes = max(1, int(warn_bytes))
+        safe_critical_bytes = max(safe_warn_bytes, int(critical_bytes))
+
+        db_size_bytes = os.path.getsize(self._db_path) if os.path.exists(self._db_path) else 0
+
+        with self._lock:
+            with self._connect() as conn:
+                aggregate_row = conn.execute(
+                    """
+                    SELECT
+                        COUNT(*) AS event_count,
+                        MIN(event_ts_epoch) AS oldest_event_ts,
+                        MAX(event_ts_epoch) AS newest_event_ts
+                    FROM export_failure_events
+                    """
+                ).fetchone()
+
+        event_count = int(aggregate_row[0]) if aggregate_row and aggregate_row[0] is not None else 0
+        oldest_event_at = (
+            datetime.fromtimestamp(aggregate_row[1], tz=timezone.utc).isoformat()
+            if aggregate_row and aggregate_row[1] is not None
+            else None
+        )
+        newest_event_at = (
+            datetime.fromtimestamp(aggregate_row[2], tz=timezone.utc).isoformat()
+            if aggregate_row and aggregate_row[2] is not None
+            else None
+        )
+
+        if db_size_bytes >= safe_critical_bytes:
+            level = "critical"
+        elif db_size_bytes >= safe_warn_bytes:
+            level = "warn"
+        else:
+            level = "ok"
+
+        return {
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "db_size_bytes": db_size_bytes,
+            "event_count": event_count,
+            "oldest_event_at": oldest_event_at,
+            "newest_event_at": newest_event_at,
+            "thresholds": {
+                "warn_bytes": safe_warn_bytes,
+                "critical_bytes": safe_critical_bytes,
+            },
+            "level": level,
+        }
+
     def clear(self) -> None:
         """清空统计数据（测试场景）。"""
         with self._lock:

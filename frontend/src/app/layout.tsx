@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'Grain - 守拙',
+  title: 'Grain - 字斟句酌',
   description: 'The AI Humanizer & Academic Shield',
   icons: {
     icon: '/favicon.svg',

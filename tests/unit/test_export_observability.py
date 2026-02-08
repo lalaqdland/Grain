@@ -70,3 +70,48 @@ def test_query_persists_across_store_instances(tmp_path):
     assert payload["summary"]["failed_requests"] == 1
     assert payload["summary"]["failed_ids"] == 2
     assert payload["by_doc"][0]["doc_id"] == "doc_a"
+
+
+def test_storage_metrics_include_size_and_event_bounds(tmp_path):
+    store = ExportFailureStatsStore(db_path=str(tmp_path / "stats.db"))
+    now = datetime(2026, 2, 7, 12, 0, tzinfo=timezone.utc)
+
+    store.record_failure("doc_a", ["p1"], timestamp_utc=now - timedelta(minutes=6))
+    store.record_failure("doc_a", ["p2", "p3"], timestamp_utc=now - timedelta(minutes=1))
+
+    metrics = store.get_storage_metrics(
+        warn_bytes=10**9,
+        critical_bytes=10**10,
+    )
+
+    assert metrics["db_size_bytes"] > 0
+    assert metrics["event_count"] == 2
+    assert metrics["oldest_event_at"] == (now - timedelta(minutes=6)).isoformat()
+    assert metrics["newest_event_at"] == (now - timedelta(minutes=1)).isoformat()
+    assert metrics["level"] == "ok"
+    assert metrics["thresholds"]["warn_bytes"] == 10**9
+    assert metrics["thresholds"]["critical_bytes"] == 10**10
+
+
+def test_storage_metrics_level_warn_and_critical(tmp_path):
+    store = ExportFailureStatsStore(db_path=str(tmp_path / "stats.db"))
+    store.record_failure("doc_a", ["p1"])
+
+    base_metrics = store.get_storage_metrics(
+        warn_bytes=10**9,
+        critical_bytes=10**10,
+    )
+    db_size = base_metrics["db_size_bytes"]
+    assert db_size > 0
+
+    warn_metrics = store.get_storage_metrics(
+        warn_bytes=max(1, db_size - 1),
+        critical_bytes=db_size + 1024,
+    )
+    assert warn_metrics["level"] == "warn"
+
+    critical_metrics = store.get_storage_metrics(
+        warn_bytes=max(1, db_size - 1),
+        critical_bytes=db_size,
+    )
+    assert critical_metrics["level"] == "critical"

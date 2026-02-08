@@ -116,6 +116,18 @@ async def get_export_failure_stats(
         raise HTTPException(status_code=500, detail=f"导出统计查询失败: {str(exc)}") from exc
 
 
+@router.get("/export/stats/storage")
+async def get_export_failure_stats_storage():
+    """查询导出统计SQLite存储体积与风险级别。"""
+    try:
+        return get_export_failure_stats_store().get_storage_metrics(
+            warn_bytes=settings.export_stats_db_warn_bytes,
+            critical_bytes=settings.export_stats_db_critical_bytes,
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"导出统计存储指标查询失败: {str(exc)}") from exc
+
+
 @router.get("/export/{doc_id}")
 async def export_document_get(doc_id: str):
     """
