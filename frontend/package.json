@@ -1,13 +1,14 @@
 {
   "name": "grain-frontend",
-  "version": "3.1.0",
+  "version": "3.1.3",
   "description": "Grain - The AI Humanizer & Academic Shield",
   "private": true,
   "scripts": {
     "dev": "next dev -p 3000",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "e2e": "playwright test"
   },
   "dependencies": {
     "next": "^14.1.0",
@@ -27,6 +28,7 @@
     "postcss": "^8.4.33",
     "autoprefixer": "^10.4.17",
     "eslint": "^8.56.0",
-    "eslint-config-next": "^14.1.0"
+    "eslint-config-next": "^14.1.0",
+    "@playwright/test": "^1.56.1"
   }
 }

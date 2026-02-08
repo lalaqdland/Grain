@@ -1,6 +1,9 @@
-import os
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from functools import lru_cache
+from pydantic import Field, AliasChoices
+from pathlib import Path
+
+BASE_DIR = Path(__file__).resolve().parent
 
 
 class Settings(BaseSettings):
@@ -24,15 +27,30 @@ class Settings(BaseSettings):
     allowed_extensions: str = ".docx"
     
     # 临时文件存储路径
-    temp_storage_path: str = "../storage/temp"
+    temp_storage_path: str = str((BASE_DIR / "../storage/temp").resolve())
+
+    # 导出失败统计存储（SQLite）
+    export_stats_db_path: str = str((BASE_DIR / "../storage/export_stats.db").resolve())
+    export_stats_db_warn_bytes: int = 10 * 1024 * 1024
+    export_stats_db_critical_bytes: int = 50 * 1024 * 1024
     
     # MarianMT配置
-    use_marian_mt: bool = False
-    marian_model_path: str = "Helsinki-NLP/opus-mt-en-de"
+    use_marian_mt: bool = True
+    marian_en_de_model: str = Field(
+        default="Helsinki-NLP/opus-mt-en-de",
+        validation_alias=AliasChoices("MARIAN_EN_DE_MODEL", "MARIAN_MODEL_PATH"),
+    )
+    marian_de_en_model: str = "Helsinki-NLP/opus-mt-de-en"
+    marian_cache_dir: str = Field(
+        default=str((BASE_DIR / "../models").resolve()),
+        validation_alias=AliasChoices("MARIAN_CACHE_DIR", "MODEL_CACHE_DIR"),
+    )
     
-    class Config:
-        env_file = ".env"
-        case_sensitive = False
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        case_sensitive=False,
+        extra="ignore",
+    )
 
 
 @lru_cache()

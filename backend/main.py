@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from config import get_settings
 from app.api.v1 import upload, rewrite, export
+from app.services.marian import get_marian_runtime_info
 
 # 获取配置
 settings = get_settings()
@@ -9,8 +10,8 @@ settings = get_settings()
 # 创建FastAPI应用
 app = FastAPI(
     title="Grain API",
-    description="The AI Humanizer & Academic Shield - 守拙",
-    version="3.1.0",
+    description="The AI Humanizer & Academic Shield - 字斟句酌",
+    version="3.1.3",
     docs_url="/docs",
     redoc_url="/redoc"
 )
@@ -36,7 +37,7 @@ async def root():
     """根路径"""
     return {
         "message": "Welcome to Grain API",
-        "version": "3.1.0",
+        "version": "3.1.3",
         "status": "running"
     }
 
@@ -47,19 +48,25 @@ async def health_check():
     return {
         "status": "healthy",
         "service": "Grain API",
-        "version": "3.1.0"
+        "version": "3.1.3"
     }
 
 
 @app.get("/api/v1/info")
 async def api_info():
     """API信息端点"""
+    runtime_marian = get_marian_runtime_info()
     return {
         "api_version": "v1",
         "features": {
             "plagiarism_fix": True,
             "ai_detection_fix": True,
-            "format_preservation": True
+            "format_preservation": True,
+            "sentence_rewrite": True,
+            "marian_optional": settings.use_marian_mt,
+        },
+        "runtime": {
+            "marian": runtime_marian,
         },
         "supported_formats": [".docx"],
         "max_file_size": f"{settings.max_upload_size / 1024 / 1024}MB"

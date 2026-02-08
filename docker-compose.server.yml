@@ -2,6 +2,9 @@ services:
   backend:
     environment:
       - CORS_ORIGINS=http://47.101.214.41:3001,http://localhost:3001,http://127.0.0.1:3001
+      - USE_MARIAN_MT=true
+      - EXPORT_STATS_DB_WARN_BYTES=10485760
+      - EXPORT_STATS_DB_CRITICAL_BYTES=52428800
 
   frontend:
     environment:

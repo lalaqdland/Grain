@@ -1,385 +1,331 @@
-# Grain API 文档
+﻿# Grain API 文档
 
-> **📌 文档更新要求**：
-> - ⚠️ 每次新增或修改API端点时必须更新本文档
-> - 标注端点状态：[已实现/待实现/已废弃]
-> - 包含完整的请求/响应示例
-> - 详见：[文档结构说明.md](./文档结构说明.md) 和 [工作规范.md](./工作规范.md)
+> 最后更新：2026-02-07（v3.1.3）  
+> 当前版本：v3.1.3  
+> 维护约定：接口变更后同步更新本文档与 `docs/status/` 测试报告。
 
 ---
 
-## 基础信息
+## 1. 基础信息
 
-- **Base URL**: `http://localhost:8001`
-- **API Version**: v1
-- **Content-Type**: `application/json`
-- **当前版本**: v3.1.0 (Local MVP) ✅
-- **测试状态**: 所有端点测试通过 🎉
+- Base URL（本地）：`http://localhost:8001`
+- API Version：`v1`
+- 文档地址：`http://localhost:8001/docs`
+- 认证：当前版本不需要认证
 
-## 认证
+## 2. 端点总览
 
-当前版本（v3.1.0）为本地开发版本，暂不需要认证。
+| 方法 | 路径 | 说明 | 状态 |
+|---|---|---|---|
+| GET | `/health` | 健康检查 | 已实现 |
+| GET | `/api/v1/info` | API能力信息 | 已实现 |
+| POST | `/api/v1/upload` | 上传并解析 `.docx` | 已实现 |
+| GET | `/api/v1/upload/documents/{doc_id}` | 获取已上传文档详情 | 已实现（v3.1.2新增可用） |
+| POST | `/api/v1/rewrite` | 文本改写（句子/段落） | 已实现 |
+| POST | `/api/v1/export` | 导出修改后文档 | 已实现 |
+| GET | `/api/v1/export/{doc_id}` | 导出当前文档状态 | 已实现 |
+| GET | `/api/v1/export/stats` | 导出失败统计查询（时间窗/文档过滤） | 已实现（v3.1.3，SQLite 持久化） |
+| GET | `/api/v1/export/stats/storage` | 导出统计存储体积与风险分级 | 已实现（v3.1.3） |
 
 ---
 
-## 端点列表
+## 3. 详细接口
 
-### 1. 健康检查
+### 3.1 GET `/health`
 
-**端点**: `GET /health`
+响应示例：
 
-**状态**: ✅ 已实现 | ✅ 已测试
-
-**描述**: 检查API服务是否正常运行
-
-**响应示例**:
 ```json
 {
   "status": "healthy",
   "service": "Grain API",
-  "version": "3.1.0"
+  "version": "3.1.3"
 }
 ```
 
-**测试结果**: ✅ 通过（状态码200）
+### 3.2 GET `/api/v1/info`
 
----
+响应示例：
 
-### 2. API信息
-
-**端点**: `GET /api/v1/info`
-
-**状态**: ✅ 已实现 | ✅ 已测试
-
-**描述**: 获取API功能和配置信息
-
-**响应示例**:
 ```json
 {
   "api_version": "v1",
   "features": {
     "plagiarism_fix": true,
     "ai_detection_fix": true,
-    "format_preservation": true
+    "format_preservation": true,
+    "sentence_rewrite": true,
+    "marian_optional": true
+  },
+  "runtime": {
+    "marian": {
+      "enabled": true,
+      "dependency_ready": true,
+      "dependencies": {
+        "transformers": true,
+        "torch": true,
+        "sentencepiece": true
+      },
+      "status": "enabled",
+      "reason": null,
+      "model_loaded": false,
+      "first_load_duration_ms": null,
+      "load_attempts": 0,
+      "load_failures": 0,
+      "generation_attempts": 0,
+      "generation_failures": 0,
+      "generation_failure_rate": 0.0,
+      "last_generation_error": null
+    }
   },
   "supported_formats": [".docx"],
   "max_file_size": "10.0MB"
 }
 ```
 
-**测试结果**: ✅ 通过（状态码200）
+### 3.3 POST `/api/v1/upload`
 
----
+- Content-Type：`multipart/form-data`
+- 字段：`file`（仅支持 `.docx`，最大 10MB）
 
-### 3. 上传文档
+响应示例：
 
-**端点**: `POST /api/v1/upload`
-
-**状态**: ✅ 已实现 | ✅ 已测试
-
-**描述**: 上传Word文档进行解析
-
-**请求**:
-- Content-Type: `multipart/form-data`
-- Body: 
-  - `file`: .docx文件（最大10MB）
-
-**响应示例**:
 ```json
 {
   "success": true,
   "message": "文档上传成功",
   "data": {
-    "id": "doc_988981e45a92",
-    "filename": "test_document.docx",
+    "id": "doc_123456789abc",
+    "filename": "sample.docx",
     "paragraphs": [
       {
-        "id": "para_6230deb3d335",
-        "text": "测试文档",
-        "style": "Title",
-        "is_modified": false,
-        "original_text": null
-      },
-      {
-        "id": "para_c33732a53657",
-        "text": "这是第一段测试内容。",
+        "id": "para_000000",
+        "text": "第一段文本",
         "style": "Normal",
         "is_modified": false,
         "original_text": null
       }
     ],
-    "uploaded_at": "2026-02-03T19:30:13.369466",
-    "total_paragraphs": 6
+    "uploaded_at": "2026-02-07T12:00:00.000000",
+    "total_paragraphs": 1
   }
 }
 ```
 
-**错误响应**:
+常见错误：
+- `400`：文件格式错误
+- `413`：文件超出 10MB
+- `500`：文档解析失败
 
-400 - 文件格式错误:
+### 3.4 GET `/api/v1/upload/documents/{doc_id}`
+
+说明：读取内存注册的文档详情（与上传后返回结构一致）。
+
+成功响应示例：
+
 ```json
 {
-  "detail": "❌ 仅支持 .docx 格式\n\n为了保证完美的排版格式，请在 Word 中将文件'另存为' .docx 格式后再上传"
+  "success": true,
+  "message": "文档获取成功",
+  "data": {
+    "id": "doc_123456789abc",
+    "filename": "sample.docx",
+    "paragraphs": [],
+    "uploaded_at": "2026-02-07T12:00:00.000000",
+    "total_paragraphs": 0
+  }
 }
 ```
 
-413 - 文件过大:
+失败响应示例（`404`）：
+
 ```json
 {
-  "detail": "文件过大，最大支持10.0MB"
+  "detail": "文档不存在: doc_missing"
 }
 ```
 
-500 - 解析失败:
+### 3.5 POST `/api/v1/rewrite`
+
+请求体：
+
 ```json
 {
-  "detail": "文档解析失败: [错误信息]"
+  "text": "This is one sentence.",
+  "mode": "ai_detection",
+  "language": "en",
+  "unit": "sentence",
+  "option_count": 3
 }
 ```
 
-**测试结果**: 
-- ✅ 有效文件上传：通过（状态码200）
-- ✅ 无文件上传：正确返回422
-- ✅ 错误格式：正确返回400
-- ✅ 文档解析：6个段落正确提取
+参数：
+- `mode`: `plagiarism | ai_detection`
+- `language`: `zh | en`
+- `unit`: `paragraph | sentence`（默认 `paragraph`）
+- `option_count`: `2 | 3`（默认 `3`）
 
----
+响应示例：
 
-### 4. 改写文本
-
-**端点**: `POST /api/v1/rewrite`
-
-**状态**: ✅ 已实现 | ✅ 已测试
-
-**描述**: 使用AI改写文本（降重或降AI）
-
-**请求体**:
-```json
-{
-  "text": "需要改写的文本内容",
-  "mode": "plagiarism",  // 或 "ai_detection"
-  "language": "zh"       // 或 "en"
-}
-```
-
-**参数说明**:
-- `text`: 需要改写的文本（必填）
-- `mode`: 改写模式（必填）
-  - `plagiarism`: 降重模式
-  - `ai_detection`: 降AI模式
-- `language`: 文本语言（必填）
-  - `zh`: 中文
-  - `en`: 英文
-
-**响应示例**:
 ```json
 {
   "success": true,
   "message": "改写成功",
-  "options": [
-    "改写选项1：...",
-    "改写选项2：...",
-    "改写选项3：..."
+  "options": ["...", "...", "..."],
+  "mode": "ai_detection",
+  "language": "en",
+  "unit": "sentence",
+  "meta": [
+    { "source": "deepseek" },
+    { "source": "deepseek" },
+    { "source": "marian" }
   ],
-  "mode": "plagiarism",
-  "language": "zh"
-}
-```
-
-**错误响应**:
-
-400 - 参数错误:
-```json
-{
-  "detail": "DeepSeek API Key未配置，请在.env文件中设置DEEPSEEK_API_KEY"
-}
-```
-
-500 - 改写失败:
-```json
-{
-  "detail": "改写失败: [错误信息]"
-}
-```
-
-**测试结果**: 
-- ✅ 降重模式（中文）：通过（耗时3.93秒，3个选项）
-- ✅ 降AI模式（中文）：通过（耗时3.31秒，3个选项）
-- ✅ 降重模式（英文）：通过（耗时2.67秒，3个选项）
-
----
-
-### 5. 导出文档（GET方式）
-
-**端点**: `GET /api/v1/export/{doc_id}`
-
-**状态**: ✅ 已实现 | ✅ 已测试
-
-**描述**: 导出原始文档（不带修改）
-
-**路径参数**:
-- `doc_id`: 文档ID
-
-**响应**:
-- Content-Type: `application/vnd.openxmlformats-officedocument.wordprocessingml.document`
-- Body: .docx文件二进制数据
-
-**错误响应**:
-
-404 - 文档不存在:
-```json
-{
-  "detail": "文档不存在: [doc_id]"
-}
-```
-
-500 - 导出失败:
-```json
-{
-  "detail": "导出失败: [错误信息]"
-}
-```
-
-**测试结果**: ✅ 通过（文件大小36,885字节）
-
----
-
-### 6. 导出文档（POST方式，带修改）
-
-**端点**: `POST /api/v1/export`
-
-**状态**: ✅ 已实现 | ✅ 已测试
-
-**描述**: 导出修改后的Word文档
-
-**请求体**:
-```json
-{
-  "doc_id": "doc_988981e45a92",
-  "modifications": {
-    "para_6230deb3d335": "修改后的段落文本1",
-    "para_c33732a53657": "修改后的段落文本2"
+  "diagnostics": {
+    "marian": {
+      "enabled": true,
+      "eligible": true,
+      "attempted": true,
+      "dependency_ready": true,
+      "used": true,
+      "status": "used",
+      "reason": null
+    }
   }
 }
 ```
 
-**参数说明**:
-- `doc_id`: 文档ID（必填）
-- `modifications`: 段落修改映射（可选）
-  - key: 段落ID
-  - value: 新的段落文本
+`diagnostics.marian.status` 取值：
+- `used`: Marian 候选已生成并被采用
+- `disabled`: Marian 开关未启用
+- `not_eligible`: 请求不满足 Marian 参与条件（非英文或非 `ai_detection`）
+- `dependency_missing`: 启用但依赖缺失
+- `generation_failed`: Marian 调用异常
+- `no_effect`: Marian 结果为空或与原文一致
 
-**响应**:
-- Content-Type: `application/vnd.openxmlformats-officedocument.wordprocessingml.document`
-- Body: .docx文件二进制数据
+### 3.6 POST `/api/v1/export`
 
-**错误响应**:
+请求体：
 
-404 - 文档不存在:
 ```json
 {
-  "detail": "文档不存在: [doc_id]"
+  "doc_id": "doc_123456789abc",
+  "modifications": {
+    "para_000000": "替换后的文本"
+  }
 }
 ```
 
-500 - 导出失败:
+成功：返回 `.docx` 二进制流。  
+失败（无效段落 ID，`400`）：
+
 ```json
 {
-  "detail": "导出失败: [错误信息]"
+  "detail": {
+    "message": "部分段落ID不存在，导出已中止",
+    "failed_ids": ["para_not_exist"],
+    "applied_ids": []
+  }
 }
 ```
 
-**测试结果**: ✅ 通过（完整工作流：上传-改写-导出）
+行为说明（v3.1.2 回归修复后）：
+- 接口采用严格原子语义：本次请求只要存在任意无效段落 ID，则不会应用任何修改。
+- 因此失败响应中 `detail.applied_ids` 固定为 `[]`。
+
+### 3.7 GET `/api/v1/export/{doc_id}`
+
+说明：不提交新修改，直接导出当前文档状态。  
+失败时：`404` 文档不存在。
+
+### 3.8 GET `/api/v1/export/stats`
+
+说明：查询导出失败统计（SQLite 持久化，服务重启后保留）。
+
+Query 参数：
+- `window_minutes`：统计时间窗（默认 `60`，范围 `1..43200`，约30天）
+- `doc_id`：可选，仅查询目标文档
+- `top_n`：按失败请求数排序的文档数量（默认 `20`，范围 `1..100`）
+
+响应示例：
+
+```json
+{
+  "window_minutes": 60,
+  "generated_at": "2026-02-07T12:39:33.318017+00:00",
+  "filters": {
+    "doc_id": "doc_da004a4f9f0b"
+  },
+  "summary": {
+    "failed_requests": 1,
+    "failed_ids": 1
+  },
+  "by_doc": [
+    {
+      "doc_id": "doc_da004a4f9f0b",
+      "failed_requests": 1,
+      "failed_ids": 1,
+      "last_failed_at": "2026-02-07T12:39:32.376998+00:00"
+    }
+  ]
+}
+```
+
+### 3.9 GET `/api/v1/export/stats/storage`
+
+说明：查询导出失败统计 SQLite 的体积、事件边界和风险分级。
+
+响应示例：
+
+```json
+{
+  "generated_at": "2026-02-07T14:39:33.318017+00:00",
+  "db_size_bytes": 20480,
+  "event_count": 1,
+  "oldest_event_at": "2026-02-07T14:39:32.376998+00:00",
+  "newest_event_at": "2026-02-07T14:39:32.376998+00:00",
+  "thresholds": {
+    "warn_bytes": 10485760,
+    "critical_bytes": 52428800
+  },
+  "level": "ok"
+}
+```
+
+分级说明：
+- `ok`：`db_size_bytes < warn_bytes`
+- `warn`：`warn_bytes <= db_size_bytes < critical_bytes`
+- `critical`：`db_size_bytes >= critical_bytes`
 
 ---
 
-## 测试总结
+## 4. 状态码
 
-**测试日期**: 2026-02-03  
-**测试版本**: v3.1.0 (Local MVP)
-
-| 端点 | 状态 | 测试结果 |
-|------|------|----------|
-| GET /health | ✅ 已实现 | ✅ 通过 |
-| GET /api/v1/info | ✅ 已实现 | ✅ 通过 |
-| POST /api/v1/upload | ✅ 已实现 | ✅ 通过 |
-| POST /api/v1/rewrite | ✅ 已实现 | ✅ 通过（3/3测试） |
-| GET /api/v1/export/{doc_id} | ✅ 已实现 | ✅ 通过 |
-| POST /api/v1/export | ✅ 已实现 | ✅ 通过 |
-
-**总体通过率**: 100% 🎉
-
-详细测试报告：[测试报告-2026-02-03.md](./测试报告-2026-02-03.md)
-
----
-
-## 错误代码
-
-| 状态码 | 说明 |
-|--------|------|
-| 200 | 请求成功 |
-| 400 | 请求参数错误 |
-| 404 | 资源不存在 |
-| 413 | 文件过大 |
-| 422 | 请求验证失败 |
+| 状态码 | 含义 |
+|---|---|
+| 200 | 成功 |
+| 400 | 请求参数或业务校验失败 |
+| 404 | 文档不存在 |
+| 413 | 上传文件过大 |
+| 422 | 请求体验证失败 |
 | 500 | 服务器内部错误 |
 
 ---
 
-## 使用示例
+## 5. 最新验收结论（v3.1.3 P0/P1）
 
-### Python
+- `python -m pytest -q`：`28 passed`
+- `cd frontend && npm run build`：通过
+- `cd frontend && npm run e2e`：通过（1 条 Playwright 用例）
+- 新覆盖：
+  - `export/stats` SQLite 持久化与跨实例可见
+  - `export/stats/storage` 体积分级能力（`ok/warn/critical`）
+  - `window_minutes` 边界扩展到 `43200`（`43201` 返回 `422`）
+  - Marian 运行态新增计数指标与失败率字段
 
-```python
-import requests
-
-# 健康检查
-response = requests.get('http://localhost:8000/health')
-print(response.json())
-
-# 上传文档
-with open('document.docx', 'rb') as f:
-    files = {'file': f}
-    response = requests.post('http://localhost:8000/api/v1/upload', files=files)
-    print(response.json())
-
-# 改写文本
-data = {
-    'text': '这是需要改写的文本',
-    'mode': 'plagiarism',
-    'language': 'zh'
-}
-response = requests.post('http://localhost:8000/api/v1/rewrite', json=data)
-print(response.json())
-```
-
-### JavaScript (Axios)
-
-```javascript
-import axios from 'axios'
-
-// 健康检查
-const health = await axios.get('http://localhost:8000/health')
-console.log(health.data)
-
-// 上传文档
-const formData = new FormData()
-formData.append('file', file)
-const upload = await axios.post('http://localhost:8000/api/v1/upload', formData)
-console.log(upload.data)
-
-// 改写文本
-const rewrite = await axios.post('http://localhost:8000/api/v1/rewrite', {
-  text: '这是需要改写的文本',
-  mode: 'plagiarism',
-  language: 'zh'
-})
-console.log(rewrite.data)
-```
-
----
-
-**文档版本**: v3.1.0  
-**最后更新**: 2026-02-03  
-**在线文档**: http://localhost:8000/docs
-
+相关报告：
+- `docs/status/测试报告-2026-02-07-dev-preview-v3.1.3-p0-p1.md`
+- `docs/status/测试报告-2026-02-07-v3.1.3-persistence-marian.md`
+- `docs/status/测试报告-2026-02-07-核心闭环修复.md`
+- `docs/status/测试报告-2026-02-07-offset替换与E2E.md`
+- `docs/status/测试报告-2026-02-07-export原子性回归修复.md`
+- `docs/status/测试报告-2026-02-07-dev回归与可观测性增强.md`

@@ -5,6 +5,7 @@ services:
       dockerfile: Dockerfile
     container_name: grain-preview-backend
     restart: unless-stopped
+    stop_grace_period: 20s
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
     ports:
       - "127.0.0.1:8101:8000"
@@ -18,10 +19,28 @@ services:
       CORS_ORIGINS: https://dev.grain.capootech.com,http://127.0.0.1:3101,http://localhost:3101
       TEMP_STORAGE_PATH: /storage/temp
       MODEL_CACHE_DIR: /models
+      USE_MARIAN_MT: "true"
+      EXPORT_STATS_DB_WARN_BYTES: "10485760"
+      EXPORT_STATS_DB_CRITICAL_BYTES: "52428800"
     env_file:
       - ./backend/.env
     networks:
       - grain-preview-network
+    cpus: '0.35'
+    mem_limit: 256m
+    mem_reservation: 128m
+    pids_limit: 128
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)\""]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
 
   frontend:
     build:
@@ -29,6 +48,7 @@ services:
       dockerfile: Dockerfile
     container_name: grain-preview-frontend
     restart: unless-stopped
+    stop_grace_period: 20s
     depends_on:
       - backend
     command: npm run dev -- -p 3000
@@ -40,6 +60,21 @@ services:
       WATCHPACK_POLLING: "true"
     networks:
       - grain-preview-network
+    cpus: '0.35'
+    mem_limit: 320m
+    mem_reservation: 160m
+    pids_limit: 128
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000 >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 8
+      start_period: 180s
 
 networks:
   grain-preview-network:
