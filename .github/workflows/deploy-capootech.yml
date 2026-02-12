@@ -23,36 +23,46 @@ jobs:
         id: meta
         shell: bash
         run: |
-          set -euo pipefail
+          set -euxo pipefail
           release_id="$(date +%Y%m%d%H%M%S)-${GITHUB_SHA::7}"
           echo "release_id=${release_id}" >> "${GITHUB_OUTPUT}"
-          echo "target_host=${{ secrets.HOST_HK_GRAIN }}" >> "${GITHUB_OUTPUT}"
 
       - name: Prepare SSH
         shell: bash
         run: |
-          set -euo pipefail
+          set -euxo pipefail
+          target_host="${{ secrets.HOST_HK_GRAIN }}"
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
-          printf '%s\n' "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          printf '%s' "${{ secrets.SSH_PRIVATE_KEY }}" | tr -d '\r' > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H "${{ steps.meta.outputs.target_host }}" >> ~/.ssh/known_hosts
+          ssh-keygen -y -f ~/.ssh/id_rsa >/dev/null
+          ssh-keyscan -H "${target_host}" >> ~/.ssh/known_hosts
+          ssh -o BatchMode=yes -o ConnectTimeout=10 -i ~/.ssh/id_rsa "root@${target_host}" "echo ssh-ok"
+
+      - name: Create release dir
+        shell: bash
+        run: |
+          set -euxo pipefail
+          target_host="${{ secrets.HOST_HK_GRAIN }}"
+          release_id="${{ steps.meta.outputs.release_id }}"
+          ssh -i ~/.ssh/id_rsa "root@${target_host}" "mkdir -p /opt/sites/capootech/releases/${release_id}"
 
       - name: Upload release files
         shell: bash
         run: |
-          set -euo pipefail
-          target_host="${{ steps.meta.outputs.target_host }}"
+          set -euxo pipefail
+          target_host="${{ secrets.HOST_HK_GRAIN }}"
           release_id="${{ steps.meta.outputs.release_id }}"
-          ssh -i ~/.ssh/id_rsa "root@${target_host}" "mkdir -p /opt/sites/capootech/releases/${release_id}"
-          scp -i ~/.ssh/id_rsa -r sites/capootech/* "root@${target_host}:/opt/sites/capootech/releases/${release_id}/"
+          tar -C sites/capootech -cf - . \
+            | ssh -i ~/.ssh/id_rsa "root@${target_host}" "tar -xf - -C /opt/sites/capootech/releases/${release_id}"
 
       - name: Activate release
         id: activate
         shell: bash
         run: |
-          set -euo pipefail
-          target_host="${{ steps.meta.outputs.target_host }}"
+          set -euxo pipefail
+          target_host="${{ secrets.HOST_HK_GRAIN }}"
           release_id="${{ steps.meta.outputs.release_id }}"
           old_target="$(ssh -i ~/.ssh/id_rsa "root@${target_host}" "readlink -f /opt/sites/capootech/current || true")"
           echo "old_target=${old_target}" >> "${GITHUB_OUTPUT}"
@@ -69,7 +79,7 @@ jobs:
         id: health
         shell: bash
         run: |
-          set -euo pipefail
+          set -euxo pipefail
           for _ in {1..12}; do
             if curl -fsS --max-time 10 https://capoo.tech/ > /tmp/capootech-home.html; then
               if grep -q "favicon-capoo.svg" /tmp/capootech-home.html && grep -q "咖波科技" /tmp/capootech-home.html && grep -q "id=\"lang-toggle\"" /tmp/capootech-home.html; then
@@ -86,8 +96,8 @@ jobs:
         if: failure() && steps.activate.outputs.old_target != ''
         shell: bash
         run: |
-          set -euo pipefail
-          target_host="${{ steps.meta.outputs.target_host }}"
+          set -euxo pipefail
+          target_host="${{ secrets.HOST_HK_GRAIN }}"
           old_target="${{ steps.activate.outputs.old_target }}"
 
           ssh -i ~/.ssh/id_rsa "root@${target_host}" "\

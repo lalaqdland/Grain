@@ -1,6 +1,6 @@
 services:
   backend:
-    image: ${ALIYUN_REGISTRY}/capoo/grain-backend:${IMAGE_TAG}
+    image: ${IMAGE_REPO_BASE}/grain-backend:${IMAGE_TAG}
     container_name: grain-backend
     restart: unless-stopped
     stop_grace_period: 20s
@@ -33,7 +33,7 @@ services:
       start_period: 20s
 
   frontend:
-    image: ${ALIYUN_REGISTRY}/capoo/grain-frontend:${IMAGE_TAG}
+    image: ${IMAGE_REPO_BASE}/grain-frontend:${IMAGE_TAG}
     container_name: grain-frontend
     restart: unless-stopped
     stop_grace_period: 30s

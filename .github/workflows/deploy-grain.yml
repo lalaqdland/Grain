@@ -25,9 +25,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       target_env: ${{ steps.meta.outputs.target_env }}
-      target_host: ${{ steps.meta.outputs.target_host }}
       compose_src: ${{ steps.meta.outputs.compose_src }}
-      healthcheck_url: ${{ steps.meta.outputs.healthcheck_url }}
       image_tag: ${{ steps.meta.outputs.image_tag }}
       should_build: ${{ steps.meta.outputs.should_build }}
       rolling_tag: ${{ steps.meta.outputs.rolling_tag }}
@@ -55,14 +53,10 @@ jobs:
           fi
 
           if [[ "${target_env}" == "dev" ]]; then
-            target_host="${{ secrets.HOST_SHANGHAI }}"
             compose_src="deploy/docker-compose.ci.dev.yml"
-            healthcheck_url="http://${{ secrets.HOST_SHANGHAI }}:8101/health"
             rolling_tag="dev-latest"
           elif [[ "${target_env}" == "prod" ]]; then
-            target_host="${{ secrets.HOST_HK_GRAIN }}"
             compose_src="deploy/docker-compose.ci.prod.yml"
-            healthcheck_url="https://grain.capoo.tech/api/health"
             rolling_tag="main-latest"
           else
             echo "Unsupported target environment: ${target_env}" >&2
@@ -79,12 +73,30 @@ jobs:
           fi
 
           echo "target_env=${target_env}" >> "${GITHUB_OUTPUT}"
-          echo "target_host=${target_host}" >> "${GITHUB_OUTPUT}"
           echo "compose_src=${compose_src}" >> "${GITHUB_OUTPUT}"
-          echo "healthcheck_url=${healthcheck_url}" >> "${GITHUB_OUTPUT}"
           echo "image_tag=${image_tag}" >> "${GITHUB_OUTPUT}"
           echo "should_build=${should_build}" >> "${GITHUB_OUTPUT}"
           echo "rolling_tag=${rolling_tag}" >> "${GITHUB_OUTPUT}"
+
+      - name: Resolve image repo base
+        shell: bash
+        run: |
+          set -euo pipefail
+          registry="${{ secrets.ALIYUN_REGISTRY }}"
+          registry="${registry%/}"
+          namespace="${{ secrets.ALIYUN_REGISTRY_NAMESPACE }}"
+          namespace="${namespace#/}"
+          namespace="${namespace%/}"
+
+          if [[ -n "${namespace}" ]]; then
+            image_repo_base="${registry}/${namespace}"
+          elif [[ "${registry}" == */* ]]; then
+            image_repo_base="${registry}"
+          else
+            image_repo_base="${registry}/capoo"
+          fi
+
+          echo "IMAGE_REPO_BASE=${image_repo_base}" >> "${GITHUB_ENV}"
 
       - name: Set up Docker Buildx
         if: steps.meta.outputs.should_build == 'true'
@@ -100,27 +112,35 @@ jobs:
 
       - name: Build and push backend image
         if: steps.meta.outputs.should_build == 'true'
-        uses: docker/build-push-action@v5
-        with:
-          context: ./backend
-          file: ./backend/Dockerfile
-          push: true
-          provenance: false
-          tags: |
-            ${{ secrets.ALIYUN_REGISTRY }}/capoo/grain-backend:${{ steps.meta.outputs.image_tag }}
-            ${{ secrets.ALIYUN_REGISTRY }}/capoo/grain-backend:${{ steps.meta.outputs.rolling_tag }}
+        shell: bash
+        run: |
+          set -euxo pipefail
+          image_tag="${{ steps.meta.outputs.image_tag }}"
+          rolling_tag="${{ steps.meta.outputs.rolling_tag }}"
+
+          docker buildx build \
+            --file ./backend/Dockerfile \
+            --tag "${IMAGE_REPO_BASE}/grain-backend:${image_tag}" \
+            --tag "${IMAGE_REPO_BASE}/grain-backend:${rolling_tag}" \
+            --provenance=false \
+            --push \
+            ./backend
 
       - name: Build and push frontend image
         if: steps.meta.outputs.should_build == 'true'
-        uses: docker/build-push-action@v5
-        with:
-          context: ./frontend
-          file: ./frontend/Dockerfile
-          push: true
-          provenance: false
-          tags: |
-            ${{ secrets.ALIYUN_REGISTRY }}/capoo/grain-frontend:${{ steps.meta.outputs.image_tag }}
-            ${{ secrets.ALIYUN_REGISTRY }}/capoo/grain-frontend:${{ steps.meta.outputs.rolling_tag }}
+        shell: bash
+        run: |
+          set -euxo pipefail
+          image_tag="${{ steps.meta.outputs.image_tag }}"
+          rolling_tag="${{ steps.meta.outputs.rolling_tag }}"
+
+          docker buildx build \
+            --file ./frontend/Dockerfile \
+            --tag "${IMAGE_REPO_BASE}/grain-frontend:${image_tag}" \
+            --tag "${IMAGE_REPO_BASE}/grain-frontend:${rolling_tag}" \
+            --provenance=false \
+            --push \
+            ./frontend
 
   deploy_target:
     runs-on: ubuntu-latest
@@ -129,38 +149,74 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Prepare SSH
+      - name: Resolve target host + health url + image repo base
         shell: bash
         run: |
           set -euo pipefail
+
+          target_env="${{ needs.build_and_push_images.outputs.target_env }}"
+          if [[ "${target_env}" == "dev" ]]; then
+            target_host="${{ secrets.HOST_SHANGHAI }}"
+            healthcheck_url="http://${{ secrets.HOST_SHANGHAI }}:8101/health"
+          elif [[ "${target_env}" == "prod" ]]; then
+            target_host="${{ secrets.HOST_HK_GRAIN }}"
+            healthcheck_url="https://grain.capoo.tech/api/health"
+          else
+            echo "Unsupported target environment: ${target_env}" >&2
+            exit 1
+          fi
+
+          registry="${{ secrets.ALIYUN_REGISTRY }}"
+          registry="${registry%/}"
+          namespace="${{ secrets.ALIYUN_REGISTRY_NAMESPACE }}"
+          namespace="${namespace#/}"
+          namespace="${namespace%/}"
+
+          if [[ -n "${namespace}" ]]; then
+            image_repo_base="${registry}/${namespace}"
+          elif [[ "${registry}" == */* ]]; then
+            image_repo_base="${registry}"
+          else
+            image_repo_base="${registry}/capoo"
+          fi
+
+          echo "::add-mask::${target_host}"
+          echo "TARGET_HOST=${target_host}" >> "${GITHUB_ENV}"
+          echo "HEALTHCHECK_URL=${healthcheck_url}" >> "${GITHUB_ENV}"
+          echo "IMAGE_REPO_BASE=${image_repo_base}" >> "${GITHUB_ENV}"
+
+      - name: Prepare SSH
+        shell: bash
+        run: |
+          set -euxo pipefail
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
-          printf '%s\n' "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          printf '%s' "${{ secrets.SSH_PRIVATE_KEY }}" | tr -d '\r' > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H "${{ needs.build_and_push_images.outputs.target_host }}" >> ~/.ssh/known_hosts
+          ssh-keygen -y -f ~/.ssh/id_rsa >/dev/null
+          ssh-keyscan -H "${TARGET_HOST}" >> ~/.ssh/known_hosts
+          ssh -o BatchMode=yes -o ConnectTimeout=10 -i ~/.ssh/id_rsa "root@${TARGET_HOST}" "echo ssh-ok"
 
       - name: Upload compose file
         shell: bash
         run: |
-          set -euo pipefail
-          target_host="${{ needs.build_and_push_images.outputs.target_host }}"
+          set -euxo pipefail
           compose_src="${{ needs.build_and_push_images.outputs.compose_src }}"
-          ssh -i ~/.ssh/id_rsa "root@${target_host}" "mkdir -p /opt/gain-project"
-          scp -i ~/.ssh/id_rsa "${compose_src}" "root@${target_host}:/opt/gain-project/docker-compose.ci.yml"
+          ssh -i ~/.ssh/id_rsa "root@${TARGET_HOST}" "mkdir -p /opt/gain-project"
+          scp -i ~/.ssh/id_rsa "${compose_src}" "root@${TARGET_HOST}:/opt/gain-project/docker-compose.ci.yml"
 
       - name: Pull and restart services on target host
         shell: bash
         run: |
-          set -euo pipefail
-          target_host="${{ needs.build_and_push_images.outputs.target_host }}"
+          set -euxo pipefail
           image_tag="${{ needs.build_and_push_images.outputs.image_tag }}"
 
-          printf '%s' "${{ secrets.ALIYUN_REGISTRY_PASSWORD }}" | ssh -i ~/.ssh/id_rsa "root@${target_host}" \
+          printf '%s' "${{ secrets.ALIYUN_REGISTRY_PASSWORD }}" | ssh -i ~/.ssh/id_rsa "root@${TARGET_HOST}" \
             "docker login '${{ secrets.ALIYUN_REGISTRY }}' -u '${{ secrets.ALIYUN_REGISTRY_USER }}' --password-stdin"
 
-          ssh -i ~/.ssh/id_rsa "root@${target_host}" "\
+          ssh -i ~/.ssh/id_rsa "root@${TARGET_HOST}" "\
             cd /opt/gain-project && \
-            export ALIYUN_REGISTRY='${{ secrets.ALIYUN_REGISTRY }}' && \
+            export IMAGE_REPO_BASE='${IMAGE_REPO_BASE}' && \
             export IMAGE_TAG='${image_tag}' && \
             export SHANGHAI_HOST='${{ secrets.HOST_SHANGHAI }}' && \
             docker compose -f docker-compose.ci.yml pull && \
@@ -169,8 +225,8 @@ jobs:
       - name: Post-deploy health check
         shell: bash
         run: |
-          set -euo pipefail
-          health_url="${{ needs.build_and_push_images.outputs.healthcheck_url }}"
+          set -euxo pipefail
+          health_url="${HEALTHCHECK_URL}"
           for _ in {1..18}; do
             if curl -fsS --max-time 10 "${health_url}" > /tmp/health.out; then
               cat /tmp/health.out
