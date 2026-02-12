@@ -62,7 +62,7 @@ jobs:
           elif [[ "${target_env}" == "prod" ]]; then
             target_host="${{ secrets.HOST_HK_GRAIN }}"
             compose_src="deploy/docker-compose.ci.prod.yml"
-            healthcheck_url="https://grain.capootech.com/api/health"
+            healthcheck_url="https://grain.capoo.tech/api/health"
             rolling_tag="main-latest"
           else
             echo "Unsupported target environment: ${target_env}" >&2

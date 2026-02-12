@@ -71,7 +71,7 @@ jobs:
         run: |
           set -euo pipefail
           for _ in {1..12}; do
-            if curl -fsS --max-time 10 https://capootech.com/ > /tmp/capootech-home.html; then
+            if curl -fsS --max-time 10 https://capoo.tech/ > /tmp/capootech-home.html; then
               if grep -q "favicon-capoo.svg" /tmp/capootech-home.html && grep -q "咖波科技" /tmp/capootech-home.html && grep -q "id=\"lang-toggle\"" /tmp/capootech-home.html; then
                 exit 0
               fi

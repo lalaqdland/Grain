@@ -1,6 +1,6 @@
 # CapooTech Landing Page
 
-This directory is the source of truth for `https://capootech.com` static landing assets.
+This directory is the source of truth for `https://capoo.tech` static landing assets.
 
 ## Structure
 

@@ -14,7 +14,7 @@ services:
       API_HOST: 0.0.0.0
       API_PORT: 8000
       API_RELOAD: "false"
-      CORS_ORIGINS: https://grain.capootech.com,https://capootech.com,https://www.capootech.com
+      CORS_ORIGINS: https://grain.capoo.tech,https://capoo.tech,https://www.capoo.tech
       TEMP_STORAGE_PATH: /storage/temp
       MODEL_CACHE_DIR: /models
     env_file:
