@@ -8,7 +8,7 @@
 
 ## P1（重要）
 
-- [ ] rewrite 链路超时与降级策略（避免单 worker 被外部调用阻塞）
+- [x] ~~rewrite 链路超时与降级策略（避免单 worker 被外部调用阻塞）~~ ✅ v3.1.4
 - [ ] 为 SQLite 统计补充备份/归档策略（体积监控已完成）
 - [ ] 基于 `runtime.marian` 与 `/export/stats/storage` 制定告警阈值与看板方案
 

@@ -202,6 +202,24 @@
 - `generation_failed`: Marian 调用异常
 - `no_effect`: Marian 结果为空或与原文一致
 
+**降级 diagnostics（v3.1.4 新增）**：
+
+当 DeepSeek 超时或连接错误触发降级时，`diagnostics` 额外包含：
+
+```json
+{
+  "deepseek_degradation": {
+    "active": true,
+    "reason": "timeout_or_connection_error:...",
+    "returned_fallback": true
+  }
+}
+```
+
+- `active`: 是否触发了降级
+- `reason`: 错误原因前缀（包含具体错误信息，最多 100 字符）
+- `returned_fallback`: 是否返回了降级文本（原始文本作为候选）
+
 ### 3.6 POST `/api/v1/export`
 
 请求体：
