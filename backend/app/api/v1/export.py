@@ -11,6 +11,7 @@ from pydantic import BaseModel
 from typing import Dict
 from app.core.xml_processor import get_processor
 from app.core.export_observability import get_export_failure_stats_store
+from app.services.marian import get_marian_runtime_info
 from config import get_settings
 
 router = APIRouter()
@@ -176,9 +177,35 @@ async def export_document_get(doc_id: str):
             filename=output_filename,
             media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         )
-        
+
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"导出失败: {str(e)}")
+
+
+@router.get("/monitoring/status")
+async def get_monitoring_status(
+    window_minutes: int = Query(default=60, ge=1, le=43200),
+):
+    """
+    聚合所有健康指标，返回统一监控状态。
+
+    - marian：MarianMT 生成失败率（warn≥10%，critical≥30%）
+    - export_failures：导出失败请求数（warn≥10次，critical≥30次，时间窗口内）
+    - storage：SQLite 存储体积（warn≥10MB，critical≥50MB）
+    - overall_level：整体健康级别，取最严重的一项
+    """
+    try:
+        marian_info = get_marian_runtime_info()
+        return get_export_failure_stats_store().get_monitoring_status(
+            marian_runtime_info=marian_info,
+            marian_failure_rate_warn=settings.marian_failure_rate_warn,
+            marian_failure_rate_critical=settings.marian_failure_rate_critical,
+            export_failure_requests_warn=settings.export_failure_requests_warn,
+            export_failure_requests_critical=settings.export_failure_requests_critical,
+            window_minutes=window_minutes,
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"监控状态查询失败: {str(exc)}") from exc
 

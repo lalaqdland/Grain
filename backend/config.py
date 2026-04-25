@@ -36,6 +36,15 @@ class Settings(BaseSettings):
     export_stats_db_warn_bytes: int = 10 * 1024 * 1024
     export_stats_db_critical_bytes: int = 50 * 1024 * 1024
     
+    # 监控告警阈值配置
+    # Marian 生成失败率阈值
+    marian_failure_rate_warn: float = 0.10   # 10% 警告
+    marian_failure_rate_critical: float = 0.30  # 30% 严重
+
+    # 导出失败请求阈值（时间窗口内）
+    export_failure_requests_warn: int = 10   # 警告阈值（次/时间窗口）
+    export_failure_requests_critical: int = 30  # 严重阈值（次/时间窗口）
+
     # MarianMT配置
     use_marian_mt: bool = True
     marian_en_de_model: str = Field(

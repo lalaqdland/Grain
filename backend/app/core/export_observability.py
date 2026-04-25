@@ -263,6 +263,90 @@ class ExportFailureStatsStore:
             "remaining_count": after_count,
         }
 
+    def get_monitoring_status(
+        self,
+        marian_runtime_info: dict[str, Any],
+        marian_failure_rate_warn: float,
+        marian_failure_rate_critical: float,
+        export_failure_requests_warn: int,
+        export_failure_requests_critical: int,
+        window_minutes: int = 60,
+    ) -> dict[str, Any]:
+        """
+        聚合所有健康指标，返回统一监控状态。
+        """
+        # Marian 健康指标
+        marian_failure_rate = float(marian_runtime_info.get("generation_failure_rate", 0.0))
+        if marian_failure_rate >= marian_failure_rate_critical:
+            marian_level = "critical"
+        elif marian_failure_rate >= marian_failure_rate_warn:
+            marian_level = "warn"
+        else:
+            marian_level = "ok"
+
+        marian_indicators = {
+            "level": marian_level,
+            "generation_failure_rate": marian_failure_rate,
+            "generation_attempts": marian_runtime_info.get("generation_attempts", 0),
+            "generation_failures": marian_runtime_info.get("generation_failures", 0),
+            "model_loaded": marian_runtime_info.get("model_loaded", False),
+            "status": marian_runtime_info.get("status", "unknown"),
+            "thresholds": {
+                "warn": marian_failure_rate_warn,
+                "critical": marian_failure_rate_critical,
+            },
+        }
+
+        # 导出失败指标（最近时间窗口）
+        export_query = self.query(window_minutes=window_minutes)
+        failed_requests = export_query["summary"]["failed_requests"]
+
+        if failed_requests >= export_failure_requests_critical:
+            export_level = "critical"
+        elif failed_requests >= export_failure_requests_warn:
+            export_level = "warn"
+        else:
+            export_level = "ok"
+
+        export_indicators = {
+            "level": export_level,
+            "failed_requests": failed_requests,
+            "failed_ids": export_query["summary"]["failed_ids"],
+            "window_minutes": window_minutes,
+            "thresholds": {
+                "warn": export_failure_requests_warn,
+                "critical": export_failure_requests_critical,
+            },
+        }
+
+        # 存储健康指标
+        storage_metrics = self.get_storage_metrics(
+            warn_bytes=10 * 1024 * 1024,
+            critical_bytes=50 * 1024 * 1024,
+        )
+        storage_indicators = {
+            "level": storage_metrics["level"],
+            "db_size_bytes": storage_metrics["db_size_bytes"],
+            "event_count": storage_metrics["event_count"],
+        }
+
+        # 整体级别：取最严重
+        all_levels = [marian_level, export_level, storage_metrics["level"]]
+        if "critical" in all_levels:
+            overall_level = "critical"
+        elif "warn" in all_levels:
+            overall_level = "warn"
+        else:
+            overall_level = "ok"
+
+        return {
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "overall_level": overall_level,
+            "marian": marian_indicators,
+            "export_failures": export_indicators,
+            "storage": storage_indicators,
+        }
+
 
 _export_failure_stats_store: ExportFailureStatsStore | None = None
 
