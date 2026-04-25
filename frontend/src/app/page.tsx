@@ -142,17 +142,19 @@ export default function Home() {
   ) => {
     const selection = window.getSelection()
     if (!selection || selection.isCollapsed || selection.rangeCount === 0) {
+      setError('⚠️ 请先用鼠标选中一个句子，再点击"改句"按钮')
       return
     }
 
     const range = selection.getRangeAt(0)
     if (!paragraphElement.contains(range.startContainer) || !paragraphElement.contains(range.endContainer)) {
-      setError('请选择同一段落中的句子')
+      setError('⚠️ 选区超出段落范围，请只选择当前段落内的文字')
       return
     }
 
     const selectedText = range.toString()
     if (!selectedText.trim()) {
+      setError('⚠️ 选区为空，请用鼠标选中一些文字后再操作')
       return
     }
 
@@ -163,12 +165,12 @@ export default function Home() {
     const endOffset = startOffset + selectedText.length
 
     if (startOffset < 0 || endOffset <= startOffset || endOffset > paragraphText.length) {
-      setError('选区无效，请重新选择句子')
+      setError('⚠️ 选区计算异常，请重新选中句子后再试')
       return
     }
 
     if (paragraphText.slice(startOffset, endOffset) !== selectedText) {
-      setError('选区无效，请重新选择句子')
+      setError('⚠️ 选区与实际文本不匹配，可能是段落已被修改，请重新选择')
       return
     }
 
@@ -310,7 +312,7 @@ export default function Home() {
     })
 
     if (replacementFailed) {
-      setError('❌ 句子替换失败：选区已变化，请重新选择后再试')
+      setError('⚠️ 句子替换失败：当前段落已被修改（选区快照漂移），请重新选择句子后再试')
       return
     }
 
