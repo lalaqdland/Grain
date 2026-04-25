@@ -1,0 +1,43 @@
+key: grain
+name: Grain
+repo: lalaqdland/Grain
+stage: beta-hardening
+progress_percent: 82
+summary: AI rewriting assistant for document humanization and academic risk reduction, now in beta hardening.
+current_focus:
+  - Keep rewrite, export, and E2E flows stable in preview and production.
+  - Improve observability around export failures and Marian runtime behavior.
+blockers:
+  - title: Monitoring still partial
+    severity: high
+    detail: Health endpoints and some export stats exist, but server and release visibility are not consolidated.
+  - title: Preview and production drift risk
+    severity: medium
+    detail: Environment-specific checks exist in docs, but continuous visibility is still missing.
+next_steps:
+  - Sync status and release metadata into the console.
+  - Keep export failure stats and Marian runtime metrics visible in one place.
+  - Maintain the latest validation reports under docs/status.
+environments:
+  - name: dev
+    branch: dev
+    domain: dev.grain.capoo.tech
+    health_url: https://dev.grain.capoo.tech/api/health
+    host: aliyun-shanghai
+    compose_services:
+      - backend
+      - frontend
+  - name: prod
+    branch: master
+    domain: grain.capootech.com
+    health_url: https://grain.capootech.com/api/health
+    host: aliyun-shanghai
+    compose_services:
+      - backend
+      - frontend
+docs:
+  readme: README.md
+  todo: docs/TODO.md
+  status:
+    - docs/status/README.md
+    - docs/status/测试报告-2026-02-07-dev回归与可观测性增强.md

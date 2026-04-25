@@ -180,7 +180,7 @@ jobs:
               target_host="${{ secrets.HOST_HK_GRAIN }}"
               ssh_user="${{ secrets.SSH_USER_HK_GRAIN }}"
               ssh_port="${{ secrets.SSH_PORT_HK_GRAIN }}"
-              healthcheck_url="https://grain.capoo.tech/api/health"
+              healthcheck_url="https://grain.capootech.com/api/health"
               compose_src="deploy/docker-compose.ci.prod.yml"
               ;;
             *)
