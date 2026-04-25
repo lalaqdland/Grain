@@ -28,8 +28,11 @@ class DeepSeekService:
         self.client = OpenAI(
             api_key=self.api_key,
             base_url=settings.deepseek_base_url,
+            timeout=settings.deepseek_request_timeout,  # 添加超时配置
         )
         self.model = settings.deepseek_model
+        self.timeout = settings.deepseek_request_timeout
+        self.degradation_enabled = settings.deepseek_degradation_enabled
 
     def rewrite_text(
         self,
@@ -51,7 +54,8 @@ class DeepSeekService:
         """
         option_count = max(2, min(option_count, 3))
 
-        options = self._rewrite_with_deepseek(
+        # 尝试 DeepSeek 调用，支持超时降级
+        deepseek_result = self._rewrite_with_deepseek_safe(
             text=text,
             mode=mode,
             language=language,
@@ -59,7 +63,11 @@ class DeepSeekService:
             option_count=option_count,
             max_retries=max_retries,
         )
-        sources = ["deepseek"] * len(options)
+
+        options = deepseek_result["options"]
+        sources = ["deepseek"] * len(options) if options else []
+        degraded = deepseek_result.get("degraded", False)
+        degradation_reason = deepseek_result.get("degradation_reason")
 
         runtime_info = get_marian_runtime_info()
         marian_eligible = mode == "ai_detection" and language == "en"
@@ -100,13 +108,63 @@ class DeepSeekService:
             marian_diagnostics["dependency_ready"] = runtime_info["dependency_ready"]
 
         options, sources = self._normalize_options(text, options, sources, option_count)
+
+        diagnostics = {"marian": marian_diagnostics}
+        if degraded:
+            diagnostics["deepseek_degradation"] = {
+                "active": True,
+                "reason": degradation_reason,
+                "returned_fallback": True,
+            }
+
         return {
             "options": options,
             "sources": sources,
-            "diagnostics": {
-                "marian": marian_diagnostics,
-            },
+            "diagnostics": diagnostics,
         }
+
+    def _rewrite_with_deepseek_safe(
+        self,
+        text: str,
+        mode: str,
+        language: str,
+        unit: str,
+        option_count: int,
+        max_retries: int,
+    ) -> Dict[str, Any]:
+        """
+        安全调用 DeepSeek，支持超时降级。
+        """
+        try:
+            options = self._rewrite_with_deepseek(
+                text=text,
+                mode=mode,
+                language=language,
+                unit=unit,
+                option_count=option_count,
+                max_retries=max_retries,
+            )
+            return {"options": options, "degraded": False, "degradation_reason": None}
+        except Exception as exc:
+            # 检查是否为超时异常
+            error_str = str(exc).lower()
+            is_timeout = (
+                "timeout" in error_str
+                or "timed out" in error_str
+                or "connection" in error_str
+                or "read timed out" in error_str
+            )
+
+            if is_timeout and self.degradation_enabled:
+                # 降级：返回原始文本
+                return {
+                    "options": [text],
+                    "degraded": True,
+                    "degradation_reason": f"timeout_or_connection_error:{str(exc)[:100]}",
+                }
+            else:
+                # 非超时错误，继续上抛
+                raise
 
     def _try_marian_option(self, text: str) -> Dict[str, Any]:
         """尝试生成 Marian 候选，并返回详细状态。"""

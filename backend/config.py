@@ -18,6 +18,8 @@ class Settings(BaseSettings):
     deepseek_api_key: str = ""
     deepseek_base_url: str = "https://api.deepseek.com/v1"
     deepseek_model: str = "deepseek-chat"
+    deepseek_request_timeout: int = 30  # API 请求超时时间（秒）
+    deepseek_degradation_enabled: bool = True  # 降级策略开关
     
     # CORS配置
     cors_origins: str = "http://localhost:3000,http://127.0.0.1:3000,http://localhost:3001,http://127.0.0.1:3001"
