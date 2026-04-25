@@ -220,7 +220,31 @@
 - `reason`: 错误原因前缀（包含具体错误信息，最多 100 字符）
 - `returned_fallback`: 是否返回了降级文本（原始文本作为候选）
 
-### 3.6 POST `/api/v1/export`
+### 3.6 POST `/api/v1/export/stats/prune`
+
+说明：清理过期的导出失败统计事件，释放 SQLite 存储空间。
+
+Query 参数：
+- `retention_days`：保留天数（默认 `30`，范围 `1..365`）
+
+响应示例：
+
+```json
+{
+  "retention_days": 30,
+  "cutoff_epoch": 1745616000.0,
+  "before_count": 1500,
+  "deleted_count": 1200,
+  "remaining_count": 300
+}
+```
+
+行为说明：
+- 删除 `event_ts_epoch < (now - retention_days)` 的记录
+- 返回清理前后的记录数量
+- 幂等操作：重复调用安全
+
+### 3.7 POST `/api/v1/export`
 
 请求体：
 
@@ -250,12 +274,12 @@
 - 接口采用严格原子语义：本次请求只要存在任意无效段落 ID，则不会应用任何修改。
 - 因此失败响应中 `detail.applied_ids` 固定为 `[]`。
 
-### 3.7 GET `/api/v1/export/{doc_id}`
+### 3.8 GET `/api/v1/export/{doc_id}`
 
 说明：不提交新修改，直接导出当前文档状态。  
 失败时：`404` 文档不存在。
 
-### 3.8 GET `/api/v1/export/stats`
+### 3.9 GET `/api/v1/export/stats`
 
 说明：查询导出失败统计（SQLite 持久化，服务重启后保留）。
 
@@ -288,7 +312,7 @@ Query 参数：
 }
 ```
 
-### 3.9 GET `/api/v1/export/stats/storage`
+### 3.10 GET `/api/v1/export/stats/storage`
 
 说明：查询导出失败统计 SQLite 的体积、事件边界和风险分级。
 
