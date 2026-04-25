@@ -1,7 +1,7 @@
 ﻿# Grain API 文档
 
-> 最后更新：2026-02-07（v3.1.3）  
-> 当前版本：v3.1.3  
+> 最后更新：2026-02-07（v3.1.4）  
+> 当前版本：v3.1.4  
 > 维护约定：接口变更后同步更新本文档与 `docs/status/` 测试报告。
 
 ---
@@ -26,6 +26,7 @@
 | GET | `/api/v1/export/{doc_id}` | 导出当前文档状态 | 已实现 |
 | GET | `/api/v1/export/stats` | 导出失败统计查询（时间窗/文档过滤） | 已实现（v3.1.3，SQLite 持久化） |
 | GET | `/api/v1/export/stats/storage` | 导出统计存储体积与风险分级 | 已实现（v3.1.3） |
+| GET | `/api/v1/monitoring/status` | 统一监控状态（聚合告警阈值） | 已实现（v3.1.4） |
 
 ---
 
@@ -338,7 +339,58 @@ Query 参数：
 - `warn`：`warn_bytes <= db_size_bytes < critical_bytes`
 - `critical`：`db_size_bytes >= critical_bytes`
 
----
+### 3.11 GET `/api/v1/monitoring/status`
+
+说明：聚合所有健康指标，返回统一监控状态。整合 `runtime.marian` 运行态、`/export/stats` 失败率、`/export/stats/storage` 存储体积三组数据，按阈值判定健康级别。
+
+Query 参数：
+- `window_minutes`：统计时间窗（默认 `60`，范围 `1..43200`），用于导出失败计数
+
+响应示例：
+
+```json
+{
+  "generated_at": "2026-02-07T15:00:00.000000+00:00",
+  "overall_level": "warn",
+  "marian": {
+    "level": "ok",
+    "generation_failure_rate": 0.05,
+    "generation_attempts": 100,
+    "generation_failures": 5,
+    "model_loaded": true,
+    "status": "enabled",
+    "thresholds": {
+      "warn": 0.1,
+      "critical": 0.3
+    }
+  },
+  "export_failures": {
+    "level": "warn",
+    "failed_requests": 15,
+    "failed_ids": 23,
+    "window_minutes": 60,
+    "thresholds": {
+      "warn": 10,
+      "critical": 30
+    }
+  },
+  "storage": {
+    "level": "ok",
+    "db_size_bytes": 2048000,
+    "event_count": 47
+  }
+}
+```
+
+告警阈值配置（`backend/config.py`）：
+
+| 指标 | 字段 | warn | critical |
+|---|---|---|---|
+| Marian 生成失败率 | `marian_failure_rate_warn` / `marian_failure_rate_critical` | 10% | 30% |
+| 导出失败请求数 | `export_failure_requests_warn` / `export_failure_requests_critical` | 10次 | 30次 |
+| SQLite 存储体积 | `export_stats_db_warn_bytes` / `export_stats_db_critical_bytes` | 10MB | 50MB |
+
+`overall_level` 取三项中最严重级别：`critical > warn > ok`。---
 
 ## 4. 状态码
 

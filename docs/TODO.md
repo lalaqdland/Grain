@@ -1,7 +1,7 @@
 # Grain 项目待办（当前版）
 
 > 最后更新：2026-02-07  
-> 当前版本：v3.1.3  
+> 当前版本：v3.1.4  
 > 说明：本文件仅保留**当前可执行待办**；历史 Sprint 过程请参考 `docs/开发日志.md`。
 
 ---
@@ -12,7 +12,11 @@
 - [x] ~~为 SQLite 统计补充备份/归档策略~~ ✅ v3.1.4
   - `prune_old_events()` 方法
   - `POST /export/stats/prune` 接口
-- [ ] 基于 `runtime.marian` 与 `/export/stats/storage` 制定告警阈值与看板方案
+- [x] ~~基于 `runtime.marian` 与 `/export/stats/storage` 制定告警阈值与看板方案~~ ✅ v3.1.4
+  - `GET /api/v1/monitoring/status` 统一监控端点
+  - `marian_failure_rate_warn=0.1` / `marian_failure_rate_critical=0.3`
+  - `export_failure_requests_warn=10` / `export_failure_requests_critical=30`
+  - `overall_level` = 三项中最严重（ok/warn/critical）
 
 ## P2（优化）
 
