@@ -113,4 +113,4 @@ docker compose up -d --build
 
 - API：`docs/API文档.md`
 - 状态报告：`docs/status/README.md`
-- 生产部署：`docs/ops/生产部署手册.md`
+- 生产部署：`docs/ops/README.md`（实际文档在 `docs/ops/生产部署手册.md`）
