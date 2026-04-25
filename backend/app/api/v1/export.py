@@ -128,6 +128,24 @@ async def get_export_failure_stats_storage():
         raise HTTPException(status_code=500, detail=f"导出统计存储指标查询失败: {str(exc)}") from exc
 
 
+@router.post("/export/stats/prune")
+async def prune_export_failure_stats(
+    retention_days: int = Query(default=30, ge=1, le=365),
+):
+    """
+    清理过期的导出失败统计事件。
+
+    - 默认保留 30 天数据
+    - 返回清理前后的事件数量
+    """
+    try:
+        return get_export_failure_stats_store().prune_old_events(
+            retention_days=retention_days,
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"清理导出统计失败: {str(exc)}") from exc
+
+
 @router.get("/export/{doc_id}")
 async def export_document_get(doc_id: str):
     """

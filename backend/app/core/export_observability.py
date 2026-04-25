@@ -227,6 +227,42 @@ class ExportFailureStatsStore:
                 conn.execute("DELETE FROM export_failure_events")
                 conn.commit()
 
+    def prune_old_events(self, retention_days: int = 30) -> dict[str, Any]:
+        """
+        清理超过 retention_days 天的旧事件，返回清理结果。
+        """
+        safe_retention = max(1, int(retention_days))
+        cutoff_epoch = (datetime.now(timezone.utc).timestamp()) - (safe_retention * 86400)
+
+        with self._lock:
+            with self._connect() as conn:
+                # 清理前统计
+                before_count_row = conn.execute(
+                    "SELECT COUNT(*) FROM export_failure_events"
+                ).fetchone()
+                before_count = int(before_count_row[0]) if before_count_row else 0
+
+                # 执行清理
+                deleted = conn.execute(
+                    "DELETE FROM export_failure_events WHERE event_ts_epoch < ?",
+                    (cutoff_epoch,),
+                ).rowcount
+                conn.commit()
+
+                # 清理后统计
+                after_count_row = conn.execute(
+                    "SELECT COUNT(*) FROM export_failure_events"
+                ).fetchone()
+                after_count = int(after_count_row[0]) if after_count_row else 0
+
+        return {
+            "retention_days": safe_retention,
+            "cutoff_epoch": cutoff_epoch,
+            "before_count": before_count,
+            "deleted_count": deleted,
+            "remaining_count": after_count,
+        }
+
 
 _export_failure_stats_store: ExportFailureStatsStore | None = None
 
